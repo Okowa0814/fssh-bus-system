@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* 鳳山高中專車登記系統 — 主配色參考 ai/1（oklch 青色系，支援深色模式） */
+:root {
+    --bg: oklch(97% 0.006 240);
+    --surface: oklch(100% 0 0);
+    --fg: oklch(19% 0.015 250);
+    --muted: oklch(52% 0.014 250);
+    --line: oklch(90% 0.007 250);
+    --accent: oklch(58% 0.14 200);
+    --accent-ink: oklch(38% 0.12 200);
+    --accent-wash: oklch(94% 0.03 200);
+    --success: oklch(55% 0.13 150);
+    --success-ink: oklch(38% 0.1 150);
+    --success-wash: oklch(94% 0.05 150);
+    --warning: oklch(63% 0.15 75);
+    --warning-ink: oklch(42% 0.12 80);
+    --warning-wash: oklch(94% 0.06 85);
+    --danger: oklch(55% 0.18 25);
+    --danger-ink: oklch(42% 0.15 25);
+    --danger-wash: oklch(94% 0.05 25);
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: oklch(17% 0.012 250);
+    --surface: oklch(22% 0.014 250);
+    --fg: oklch(93% 0.006 250);
+    --muted: oklch(68% 0.014 250);
+    --line: oklch(100% 0 0 / 12%);
+    --accent: oklch(64% 0.15 200);
+    --accent-ink: oklch(80% 0.11 200);
+    --accent-wash: oklch(27% 0.07 200);
+    --success: oklch(68% 0.13 150);
+    --success-ink: oklch(78% 0.13 150);
+    --success-wash: oklch(26% 0.06 150);
+    --warning: oklch(74% 0.13 80);
+    --warning-ink: oklch(80% 0.13 80);
+    --warning-wash: oklch(28% 0.07 85);
+    --danger: oklch(72% 0.16 25);
+    --danger-ink: oklch(78% 0.14 25);
+    --danger-wash: oklch(28% 0.08 25);
+}
+
+@theme inline {
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-fg: var(--fg);
+    --color-muted: var(--muted);
+    --color-line: var(--line);
+    --color-accent: var(--accent);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-wash: var(--accent-wash);
+    --color-success: var(--success);
+    --color-success-ink: var(--success-ink);
+    --color-success-wash: var(--success-wash);
+    --color-warning: var(--warning);
+    --color-warning-ink: var(--warning-ink);
+    --color-warning-wash: var(--warning-wash);
+    --color-danger: var(--danger);
+    --color-danger-ink: var(--danger-ink);
+    --color-danger-wash: var(--danger-wash);
+    --font-sans:
+        -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", system-ui,
+        sans-serif;
+}
+
+body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
