@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import type { MeResponse, BookingWindowDto } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
 import { StatusChip } from "@/components/StatusChip";
 import { ArrowRightIcon, BusIcon, UserIcon, MapPinIcon } from "@/components/icons";
 
@@ -18,24 +17,17 @@ function greeting(): string {
 }
 
 export default function HomePage() {
-    const { user, status, logout } = useAuth();
+    const { user } = useCurrentUser();
     const [me, setMe] = useState<MeResponse | null>(null);
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
 
     useEffect(() => {
-        if (status !== "ready") {
-            return;
-        }
-        api<MeResponse>("/api/me").then(setMe).catch(() => {});
-        api<BookingWindowDto>("/api/booking-window").then(setWindow).catch(() => {});
-    }, [status]);
-
-    if (status !== "ready" || !user) {
-        return null;
-    }
+        api<MeResponse>("/api/student/me").then(setMe).catch(() => {});
+        api<BookingWindowDto>("/api/student/booking-window").then(setWindow).catch(() => {});
+    }, []);
 
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <section>
                 <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
                     {greeting()}，{user.name}！
@@ -124,6 +116,6 @@ export default function HomePage() {
                     )}
                 </div>
             </section>
-        </AppShell>
+        </>
     );
 }

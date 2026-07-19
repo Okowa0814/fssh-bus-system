@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
-import { requireAuth, isResponse } from "@/server/auth";
+import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail, ApiFailure } from "@/server/http";
 import { acquireLock, releaseLock, seatLockKey } from "@/server/lock";
 import { getBookingWindow } from "@/server/settings";
@@ -9,13 +9,13 @@ import { isValidSeat } from "@/lib/seat";
 const LOCK_TTL_MS = 5000;
 
 /**
- * POST /api/bookings — 自由選位「零失誤」防超賣流程
+ * POST /api/student/bookings — 自由選位「零失誤」防超賣流程
  * 第一道防線：Redis 分散式鎖（同座位僅放行第 1 個請求，其餘回 423）
  * 第二道防線：PostgreSQL 交易內雙重檢查
  * 第三道防線：@@unique([scheduleId, seatNumber]) 唯一約束
  */
 export async function POST(request: Request) {
-    const auth = await requireAuth(request);
+    const auth = await requireStudent(request);
     if (isResponse(auth)) {
         return auth;
     }

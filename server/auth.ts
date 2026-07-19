@@ -61,11 +61,14 @@ async function getAuthUser(request: Request): Promise<AuthUser | null> {
     return verifyToken(header.slice("Bearer ".length));
 }
 
-/** 需要登入：未帶有效 token 回 401 */
-export async function requireAuth(request: Request): Promise<AuthUser | NextResponse> {
+/** 僅限學生使用：管理員帳號回 403，徹底切開管理員與學生的操作權限 */
+export async function requireStudent(request: Request): Promise<AuthUser | NextResponse> {
     const user = await getAuthUser(request);
     if (!user) {
         return fail(401, "尚未登入或登入已過期");
+    }
+    if (user.isAdmin) {
+        return fail(403, "管理員帳號無法使用此功能");
     }
     return user;
 }

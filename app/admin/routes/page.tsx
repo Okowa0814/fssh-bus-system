@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
 import type { StationDto, ScheduleDto } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
-import { NotFoundCard } from "@/components/NotFoundCard";
 import { BusIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from "@/components/icons";
 
 interface AdminRoute {
@@ -73,16 +70,12 @@ function IconButton({
 }
 
 export default function AdminRoutesPage() {
-    const { user, status, logout } = useAuth({ admin: true });
     const [routes, setRoutes] = useState<AdminRoute[]>([]);
     const [savingId, setSavingId] = useState<number | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [scheduleDrafts, setScheduleDrafts] = useState<Record<number, ScheduleDraft>>({});
 
     useEffect(() => {
-        if (status !== "ready") {
-            return;
-        }
         api<AdminRoute[]>("/api/admin/routes")
             .then((data) =>
                 setRoutes(
@@ -96,7 +89,7 @@ export default function AdminRoutesPage() {
                 ),
             )
             .catch(() => {});
-    }, [status]);
+    }, []);
 
     const patchRoute = (id: number, patch: Partial<AdminRoute>) => {
         setRoutes((previous) =>
@@ -255,15 +248,8 @@ export default function AdminRoutesPage() {
         }
     };
 
-    if (status === "denied") {
-        return <NotFoundCard />;
-    }
-    if (status !== "ready" || !user) {
-        return null;
-    }
-
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">路線管理</h1>
@@ -454,6 +440,6 @@ export default function AdminRoutesPage() {
                     </section>
                 ))}
             </div>
-        </AppShell>
+        </>
     );
 }

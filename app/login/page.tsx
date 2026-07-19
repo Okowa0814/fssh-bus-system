@@ -42,6 +42,20 @@ export default function LoginPage() {
         }
     };
 
+    // 開發測試用：略過 Google OAuth，直接向 dev-login 取得合法 JWT（正式環境該路由回 404）
+    const handleDevLogin = async (admin: boolean) => {
+        setLoading(true);
+        setMessage(null);
+        try {
+            const result = await api<LoginResponse>(`/api/auth/dev-login?admin=${admin ? "1" : "0"}`);
+            setToken(result.token);
+            router.replace(result.user.isAdmin ? "/admin" : "/");
+        } catch (error) {
+            setMessage(error instanceof ApiError ? error.message : "登入失敗，請稍後再試");
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="grid min-h-dvh place-items-center px-5 py-10">
             <div className="w-full max-w-md space-y-5">
@@ -69,6 +83,29 @@ export default function LoginPage() {
                         <p className="mt-4 rounded-xl bg-danger-wash px-4 py-3 text-center text-sm text-danger-ink">
                             {message}
                         </p>
+                    )}
+                    {process.env.NODE_ENV !== "production" && (
+                        <div className="mt-5 space-y-2 border-t border-line pt-4">
+                            <p className="text-center text-xs text-muted">開發測試用（正式環境不會顯示）</p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={loading}
+                                    onClick={() => handleDevLogin(false)}
+                                    className="flex-1 rounded-xl border border-line py-2 text-sm disabled:opacity-50"
+                                >
+                                    測試登入（學生）
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={loading}
+                                    onClick={() => handleDevLogin(true)}
+                                    className="flex-1 rounded-xl border border-line py-2 text-sm disabled:opacity-50"
+                                >
+                                    測試登入（管理員）
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
 

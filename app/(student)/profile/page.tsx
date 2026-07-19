@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
 import type { MeResponse } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
 import { StatusChip } from "@/components/StatusChip";
 import { MapPinIcon } from "@/components/icons";
 
 export default function ProfilePage() {
-    const { user, status, logout } = useAuth();
+    const { user } = useCurrentUser();
     const [me, setMe] = useState<MeResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [cancelling, setCancelling] = useState(false);
@@ -18,17 +17,15 @@ export default function ProfilePage() {
 
     const load = useCallback(() => {
         setLoading(true);
-        api<MeResponse>("/api/me")
+        api<MeResponse>("/api/student/me")
             .then(setMe)
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
 
     useEffect(() => {
-        if (status === "ready") {
-            load();
-        }
-    }, [status, load]);
+        load();
+    }, [load]);
 
     const cancel = async () => {
         if (!me?.booking) {
@@ -40,7 +37,7 @@ export default function ProfilePage() {
         setCancelling(true);
         setMessage(null);
         try {
-            await api(`/api/bookings/${me.booking.id}`, { method: "DELETE" });
+            await api(`/api/student/bookings/${me.booking.id}`, { method: "DELETE" });
             load();
         } catch (error) {
             setMessage(error instanceof ApiError ? error.message : "取消失敗，請稍後再試");
@@ -49,14 +46,10 @@ export default function ProfilePage() {
         }
     };
 
-    if (status !== "ready" || !user) {
-        return null;
-    }
-
     const info = me?.user;
 
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <h1 className="text-2xl font-bold tracking-tight">我的身份</h1>
             <p className="mt-1.5 text-sm text-muted">個人資訊與專車登記狀態。</p>
 
@@ -149,6 +142,6 @@ export default function ProfilePage() {
                     )}
                 </section>
             </div>
-        </AppShell>
+        </>
     );
 }

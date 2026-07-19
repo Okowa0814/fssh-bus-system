@@ -1,0 +1,21 @@
+"use client";
+
+import { useStudentGuard, AuthProvider } from "@/hooks/useAuth";
+import { AppShell } from "@/components/AppShell";
+
+// 學生端共用殼層：header/導覽列在此掛載一次，切換頁面時不會重新渲染
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
+    const { user, status, logout } = useStudentGuard();
+
+    if (status !== "ready" || !user) {
+        return null;
+    }
+
+    return (
+        <AuthProvider user={user} logout={logout}>
+            <AppShell user={user} onLogout={logout}>
+                {children}
+            </AppShell>
+        </AuthProvider>
+    );
+}

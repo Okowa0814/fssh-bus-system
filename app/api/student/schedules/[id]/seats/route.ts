@@ -1,11 +1,11 @@
 import { prisma } from "@/server/db";
-import { requireAuth, isResponse } from "@/server/auth";
+import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { TOTAL_SEATS } from "@/lib/seat";
 
-/** GET /api/schedules/:id/seats — 該班次已被登記的座位號碼 */
+/** GET /api/student/schedules/:id/seats — 該班次已被登記的座位號碼（僅限學生） */
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-    const auth = await requireAuth(request);
+    const auth = await requireStudent(request);
     if (isResponse(auth)) {
         return auth;
     }

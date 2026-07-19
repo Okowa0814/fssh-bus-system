@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
 import type { AdminBookingDto, BookingWindowDto } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
-import { NotFoundCard } from "@/components/NotFoundCard";
 import { StatusChip } from "@/components/StatusChip";
 
 function toLocalInput(iso: string | null): string {
@@ -18,7 +15,6 @@ function toLocalInput(iso: string | null): string {
 }
 
 export default function AdminPage() {
-    const { user, status, logout } = useAuth({ admin: true });
     const [bookings, setBookings] = useState<AdminBookingDto[]>([]);
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [start, setStart] = useState("");
@@ -31,18 +27,15 @@ export default function AdminPage() {
     const [keyword, setKeyword] = useState("");
 
     useEffect(() => {
-        if (status !== "ready") {
-            return;
-        }
         api<AdminBookingDto[]>("/api/admin/bookings").then(setBookings).catch(() => {});
-        api<BookingWindowDto>("/api/booking-window")
+        api<BookingWindowDto>("/api/admin/booking-window")
             .then((data) => {
                 setWindow(data);
                 setStart(toLocalInput(data.start));
                 setEnd(toLocalInput(data.end));
             })
             .catch(() => {});
-    }, [status]);
+    }, []);
 
     const routeNames = useMemo(
         () => [...new Set(bookings.map((booking) => booking.schedule.route.name))],
@@ -94,15 +87,8 @@ export default function AdminPage() {
         }
     };
 
-    if (status === "denied") {
-        return <NotFoundCard />;
-    }
-    if (status !== "ready" || !user) {
-        return null;
-    }
-
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">登記總覽</h1>
@@ -244,6 +230,6 @@ export default function AdminPage() {
                     </table>
                 </div>
             </section>
-        </AppShell>
+        </>
     );
 }

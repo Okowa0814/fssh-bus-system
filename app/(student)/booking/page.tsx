@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
 import type {
     BookingDto,
@@ -11,7 +10,6 @@ import type {
     RouteDto,
     SeatsResponse,
 } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
 import { Stepper } from "@/components/Stepper";
 import { SeatMap } from "@/components/SeatMap";
 import { ArrowRightIcon, BusIcon, CheckIcon, MapPinIcon, XIcon } from "@/components/icons";
@@ -23,8 +21,6 @@ type BookingResult =
     | { ok: false; message: string };
 
 export default function BookingPage() {
-    const { user, status, logout } = useAuth();
-
     const [loading, setLoading] = useState(true);
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [existing, setExisting] = useState<BookingDto | null>(null);
@@ -40,13 +36,10 @@ export default function BookingPage() {
     const [result, setResult] = useState<BookingResult | null>(null);
 
     useEffect(() => {
-        if (status !== "ready") {
-            return;
-        }
         Promise.all([
-            api<BookingWindowDto>("/api/booking-window"),
-            api<MeResponse>("/api/me"),
-            api<RouteDto[]>("/api/routes"),
+            api<BookingWindowDto>("/api/student/booking-window"),
+            api<MeResponse>("/api/student/me"),
+            api<RouteDto[]>("/api/student/routes"),
         ])
             .then(([windowData, meData, routesData]) => {
                 setWindow(windowData);
@@ -55,13 +48,13 @@ export default function BookingPage() {
             })
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [status]);
+    }, []);
 
     const loadSeats = useCallback(async (id: number) => {
         setSeatsLoading(true);
         setSelectedSeat(null);
         try {
-            const seats = await api<SeatsResponse>(`/api/schedules/${id}/seats`);
+            const seats = await api<SeatsResponse>(`/api/student/schedules/${id}/seats`);
             setTakenSeats(seats.takenSeats);
         } catch {
             setTakenSeats([]);
@@ -86,7 +79,7 @@ export default function BookingPage() {
         }
         setSubmitting(true);
         try {
-            const booking = await api<BookingDto>("/api/bookings", {
+            const booking = await api<BookingDto>("/api/student/bookings", {
                 method: "POST",
                 body: { scheduleId, seatNumber: selectedSeat },
             });
@@ -110,12 +103,8 @@ export default function BookingPage() {
         }
     };
 
-    if (status !== "ready" || !user) {
-        return null;
-    }
-
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <h1 className="text-2xl font-bold tracking-tight">校車登記</h1>
             <p className="mt-1.5 text-sm text-muted">依照步驟完成放學專車劃位。</p>
 
@@ -350,6 +339,6 @@ export default function BookingPage() {
                     </div>
                 )}
             </div>
-        </AppShell>
+        </>
     );
 }

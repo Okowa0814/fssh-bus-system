@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import type { RouteDto } from "@/lib/types";
-import { AppShell } from "@/components/AppShell";
 import { BusIcon } from "@/components/icons";
 
 const guide = [
@@ -16,22 +14,14 @@ const guide = [
 ];
 
 export default function HelpPage() {
-    const { user, status, logout } = useAuth();
     const [routes, setRoutes] = useState<RouteDto[]>([]);
 
     useEffect(() => {
-        if (status !== "ready") {
-            return;
-        }
-        api<RouteDto[]>("/api/routes").then(setRoutes).catch(() => {});
-    }, [status]);
-
-    if (status !== "ready" || !user) {
-        return null;
-    }
+        api<RouteDto[]>("/api/student/routes").then(setRoutes).catch(() => {});
+    }, []);
 
     return (
-        <AppShell user={user} onLogout={logout}>
+        <>
             <h1 className="text-2xl font-bold tracking-tight">使用說明</h1>
             <p className="mt-1.5 text-sm text-muted">操作流程與各路線停靠站資訊。</p>
 
@@ -90,6 +80,6 @@ export default function HelpPage() {
                     ))}
                 </div>
             </section>
-        </AppShell>
+        </>
     );
 }

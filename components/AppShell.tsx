@@ -69,7 +69,7 @@ export function AppShell({
     children: ReactNode;
 }) {
     const pathname = usePathname();
-    const links = [...studentLinks, ...(user.isAdmin ? adminLinks : [])];
+    const links = user.isAdmin ? adminLinks : studentLinks;
 
     return (
         <div className="flex min-h-dvh flex-col">

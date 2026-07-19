@@ -2,6 +2,15 @@ import { requireAdmin, isResponse } from "@/server/auth";
 import { getBookingWindow, setBookingWindow } from "@/server/settings";
 import { ok, fail } from "@/server/http";
 
+/** GET /api/admin/booking-window — 目前登記開放時間（管理後台顯示與編輯表單預填用） */
+export async function GET(request: Request) {
+    const auth = await requireAdmin(request);
+    if (isResponse(auth)) {
+        return auth;
+    }
+    return ok(await getBookingWindow());
+}
+
 /** PUT /api/admin/booking-window — 設定登記開放時間 */
 export async function PUT(request: Request) {
     const auth = await requireAdmin(request);

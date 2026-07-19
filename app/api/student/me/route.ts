@@ -1,10 +1,10 @@
 import { prisma } from "@/server/db";
-import { requireAuth, isResponse } from "@/server/auth";
+import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 
-/** GET /api/me — 目前登入者的資料與有效登記（身份頁 / 主頁使用） */
+/** GET /api/student/me — 目前登入者的資料與有效登記（身份頁 / 主頁使用，僅限學生） */
 export async function GET(request: Request) {
-    const auth = await requireAuth(request);
+    const auth = await requireStudent(request);
     if (isResponse(auth)) {
         return auth;
     }

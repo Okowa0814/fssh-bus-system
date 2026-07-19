@@ -1,11 +1,11 @@
 import { prisma } from "@/server/db";
-import { requireAuth, isResponse } from "@/server/auth";
+import { requireStudent, isResponse } from "@/server/auth";
 import { ok } from "@/server/http";
 import type { StationDto } from "@/lib/types";
 
-/** GET /api/routes — 學生端路線清單（僅啟用中的路線與站點） */
+/** GET /api/student/routes — 學生端路線清單（僅啟用中的路線與站點） */
 export async function GET(request: Request) {
-    const auth = await requireAuth(request);
+    const auth = await requireStudent(request);
     if (isResponse(auth)) {
         return auth;
     }
