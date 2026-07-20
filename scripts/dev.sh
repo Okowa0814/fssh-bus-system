@@ -16,4 +16,8 @@ if [ ! -f .env ]; then
 fi
 
 echo "啟動開發環境（docker-compose.dev.yml）..."
-docker compose -f docker-compose.dev.yml up --build "$@"
+docker compose -f docker-compose.dev.yml up --build -d "$@"
+
+echo ""
+echo "服務狀態："
+docker compose -f docker-compose.dev.yml ps

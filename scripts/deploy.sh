@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 正式環境部署腳本
-# 啟動 nginx + nextjs（runner target）+ migrate（一次性 prisma db push）+ db + redis
+# Deploy to production environment script
+
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -30,9 +30,6 @@ if [ "$SKIP_CONFIRM" = false ]; then
         exit 1
     fi
 fi
-
-echo "建置並啟動正式環境服務（docker-compose.yml）..."
-docker compose -f docker-compose.yml up -d --build
 
 echo ""
 echo "服務狀態："

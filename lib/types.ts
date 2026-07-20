@@ -1,5 +1,3 @@
-// 前後端共用的 API 資料型別（DTO）
-
 export interface TokenPayload {
     sub: string; // 學號
     name: string;

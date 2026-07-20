@@ -27,7 +27,7 @@ export function clearToken(): void {
     window.localStorage.removeItem(TOKEN_KEY);
 }
 
-/** 解出 JWT payload（僅供前端顯示；真正的驗證在後端） */
+/** Decode JWT token */
 export function decodeToken(): TokenPayload | null {
     const token = getToken();
     if (!token) {
