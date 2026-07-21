@@ -13,9 +13,8 @@ export class ApiError extends Error {
 }
 
 export function getToken(): string | null {
-    if (typeof window === "undefined") {
-        return null;
-    }
+    if (typeof window === "undefined") return null; // While SSR, window is not available
+
     return window.localStorage.getItem(TOKEN_KEY);
 }
 
@@ -27,12 +26,11 @@ export function clearToken(): void {
     window.localStorage.removeItem(TOKEN_KEY);
 }
 
-/** Decode JWT token */
 export function decodeToken(): TokenPayload | null {
     const token = getToken();
-    if (!token) {
-        return null;
-    }
+
+    if (!token) return null;
+
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
         const payload = JSON.parse(
@@ -40,10 +38,13 @@ export function decodeToken(): TokenPayload | null {
                 Array.from(atob(base64), (c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join(""),
             ),
         ) as TokenPayload & { sub?: string };
+
+        // Check if the token has expired or is invalid
         if (!payload.sub || payload.exp * 1000 <= Date.now()) {
             clearToken();
             return null;
         }
+
         return payload;
     } catch {
         clearToken();
