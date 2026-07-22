@@ -5,8 +5,7 @@ import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { api } from "@/services/api";
 import type { MeResponse, BookingWindowDto } from "@/lib/types";
-import { StatusChip } from "@/components/StatusChip";
-import { ArrowRightIcon, BusIcon, UserIcon, MapPinIcon } from "@/components/icons";
+import { StatusChip, ArrowRightIcon, BusIcon, UserIcon, MapPinIcon } from "@/components/";
 
 function greeting(): string {
     const hour = new Date().getHours();
@@ -36,7 +35,7 @@ export default function HomePage() {
             </section>
 
             <section className="mt-7 grid gap-4 md:grid-cols-2">
-                {/* 校車登記卡片（浮水印 icon + 右下箭頭，參考 ai/2/_4） */}
+                {/* Booking Card */}
                 <Link
                     href="/booking"
                     className="group relative overflow-hidden rounded-3xl border border-line bg-surface p-6 transition hover:border-accent hover:shadow-lg hover:shadow-accent/10"
@@ -52,7 +51,7 @@ export default function HomePage() {
                     </span>
                 </Link>
 
-                {/* 我的身份卡片 */}
+                {/* My Profile Card */}
                 <Link
                     href="/profile"
                     className="group relative overflow-hidden rounded-3xl border border-line bg-surface p-6 transition hover:border-accent hover:shadow-lg hover:shadow-accent/10"
@@ -69,27 +68,27 @@ export default function HomePage() {
                 </Link>
             </section>
 
-            <section className="mt-7 grid gap-4 md:grid-cols-2">
+            <section className="mt-5 grid gap-4 md:grid-cols-2">
                 <div className="rounded-3xl border border-line bg-surface p-6">
+
                     <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted">登記狀態</h3>
+                        <h3 className="text-sl font-semibold text-muted">登記狀態</h3>
                         {window_ && <StatusChip status={window_.open ? "OPEN" : "CLOSED"} />}
                     </div>
+
                     {window_?.start && window_?.end ? (
                         <p className="mt-3 text-sm leading-relaxed">
                             開放時間：
                             <br />
-                            {new Date(window_.start).toLocaleString("zh-TW")} ～
+                            {new Date(window_.start).toLocaleString("zh-TW")} ~
                             <br />
                             {new Date(window_.end).toLocaleString("zh-TW")}
                         </p>
                     ) : (
                         <p className="mt-3 text-sm text-muted">尚未公告登記時間。</p>
                     )}
-                </div>
 
-                <div className="rounded-3xl border border-line bg-surface p-6">
-                    <h3 className="text-sm font-semibold text-muted">我的登記</h3>
+                    <h3 className="text-sm font-semibold text-muted my-4">我的登記</h3>
                     {me?.booking ? (
                         <div className="mt-3 flex items-center gap-4">
                             <span className="grid size-12 place-items-center rounded-2xl bg-success-wash text-lg font-bold text-success-ink">

@@ -75,3 +75,11 @@ body {
         background-color 0.2s ease,
         color 0.2s ease;
 }
+
+.glass {
+    background: color-mix(var(--surface) 65%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid color-mix(in oklch, var(--line) 50%, transparent);
+    box-shadow: 0 8px 32px color-mix(in oklch, var(--fg) 8%, transparent);
+}

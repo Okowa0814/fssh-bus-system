@@ -14,12 +14,10 @@ interface CurrentUser {
 
 const AuthContext = createContext<CurrentUser | null>(null);
 
-/** 供已驗證的頁面使用：從最近的 AuthProvider（layout 內）取得使用者資訊 */
 export function useCurrentUser(): CurrentUser {
     const value = useContext(AuthContext);
-    if (!value) {
-        throw new Error("useCurrentUser 必須在 AuthProvider 底下使用");
-    }
+
+    if (!value) throw new Error("useCurrentUser must be used within an AuthProvider");
     return value;
 }
 
@@ -27,7 +25,7 @@ export function AuthProvider({ user, logout, children }: CurrentUser & { childre
     return <AuthContext.Provider value={{ user, logout }}>{children}</AuthContext.Provider>;
 }
 
-/** 前端登入守衛的共用實作，由下面兩支明確命名的 hook 各自呼叫 */
+
 function useAuthGuard(role: "student" | "admin") {
     const router = useRouter();
     const [user, setUser] = useState<TokenPayload | null>(null);
@@ -35,17 +33,18 @@ function useAuthGuard(role: "student" | "admin") {
 
     useEffect(() => {
         const payload = decodeToken();
+
         if (!payload) {
             router.replace("/login");
             return;
         }
+        
+        
         if (role === "admin" && !payload.isAdmin) {
-            // 權限不符直接回 404，不洩漏管理端點的存在（與後端行為一致）
             setStatus("denied");
             return;
         }
         if (role === "student" && payload.isAdmin) {
-            // 管理員帳號一律導回管理後台，徹底切開兩種身份能看到的頁面
             router.replace("/admin");
             return;
         }
