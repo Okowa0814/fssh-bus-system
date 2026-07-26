@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
@@ -13,12 +13,6 @@ export async function GET(request: Request) {
 
     const routes = await prisma.route.findMany({
         orderBy: { id: "asc" },
-        include: {
-            schedules: {
-                orderBy: { id: "asc" },
-                select: { id: true, label: true, departAt: true },
-            },
-        },
     });
 
     return ok(routes);
@@ -31,7 +25,7 @@ export async function POST(request: Request) {
         return auth;
     }
 
-    let body: { name?: unknown; stations?: unknown };
+    let body: { name?: unknown; departAt?: unknown; stations?: unknown };
     try {
         body = await request.json();
     } catch {
@@ -40,6 +34,9 @@ export async function POST(request: Request) {
 
     if (typeof body.name !== "string" || !body.name.trim()) {
         return fail(400, "路線名稱格式錯誤");
+    }
+    if (body.departAt !== undefined && typeof body.departAt !== "string") {
+        return fail(400, "發車時間格式錯誤");
     }
 
     const stations = body.stations === undefined ? [] : parseStations(body.stations);
@@ -50,13 +47,8 @@ export async function POST(request: Request) {
     const route = await prisma.route.create({
         data: {
             name: body.name.trim().slice(0, 50),
+            departAt: typeof body.departAt === "string" ? body.departAt.trim().slice(0, 20) : "",
             stations: stations as unknown as Prisma.InputJsonValue,
-        },
-        include: {
-            schedules: {
-                orderBy: { id: "asc" },
-                select: { id: true, label: true, departAt: true },
-            },
         },
     });
 

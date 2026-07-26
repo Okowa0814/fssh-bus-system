@@ -30,6 +30,6 @@ export async function releaseLock(key: string, token: string): Promise<void> {
     }
 }
 
-export function seatLockKey(scheduleId: number, seatNumber: number): string {
-    return `lock:seat:${scheduleId}:${seatNumber}`;
+export function seatLockKey(routeId: number, seatNumber: number): string {
+    return `lock:seat:${routeId}:${seatNumber}`;
 }

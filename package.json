@@ -2,6 +2,7 @@
     "name": "fssh-bus",
     "version": "0.1.0",
     "private": true,
+    "type": "module",
     "scripts": {
         "dev": "next dev -p 1135",
         "build": "prisma generate && next build",
@@ -11,11 +12,14 @@
         "postinstall": "prisma generate"
     },
     "dependencies": {
-        "@prisma/client": "^6.5.0",
+        "@prisma/adapter-pg": "^7.9.0",
+        "@prisma/client": "^7.9.0",
+        "dotenv": "^17.4.2",
         "google-auth-library": "^9.15.1",
         "ioredis": "^5.4.2",
         "jose": "^5.9.6",
         "next": "16.2.10",
+        "pg": "^8.22.0",
         "react": "19.2.4",
         "react-dom": "19.2.4",
         "server-only": "^0.0.1"
@@ -23,15 +27,13 @@
     "devDependencies": {
         "@tailwindcss/postcss": "^4",
         "@types/node": "^20",
+        "@types/pg": "^8.20.0",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "eslint": "^9",
         "eslint-config-next": "16.2.10",
-        "prisma": "^6.5.0",
+        "prisma": "^7.9.0",
         "tailwindcss": "^4",
         "typescript": "^5"
-    },
-    "prisma": {
-        "schema": "schema.prisma"
     }
 }

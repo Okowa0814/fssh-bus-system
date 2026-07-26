@@ -2,20 +2,15 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/services/api";
-import type { StationDto, ScheduleDto } from "@/lib/types";
+import type { StationDto } from "@/lib/types";
 import { BusIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from "@/components/icons";
 
 interface AdminRoute {
     id: number;
     name: string;
+    departAt: string;
     enabled: boolean;
     stations: StationDto[];
-    schedules: ScheduleDto[];
-}
-
-interface ScheduleDraft {
-    label: string;
-    departAt: string;
 }
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
@@ -73,7 +68,6 @@ export default function AdminRoutesPage() {
     const [routes, setRoutes] = useState<AdminRoute[]>([]);
     const [savingId, setSavingId] = useState<number | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
-    const [scheduleDrafts, setScheduleDrafts] = useState<Record<number, ScheduleDraft>>({});
 
     useEffect(() => {
         api<AdminRoute[]>("/api/admin/routes")
@@ -82,9 +76,9 @@ export default function AdminRoutesPage() {
                     data.map((route) => ({
                         id: route.id,
                         name: route.name,
+                        departAt: route.departAt ?? "",
                         enabled: route.enabled,
                         stations: route.stations,
-                        schedules: route.schedules ?? [],
                     })),
                 ),
             )
@@ -155,7 +149,12 @@ export default function AdminRoutesPage() {
         try {
             await api(`/api/admin/routes/${route.id}`, {
                 method: "PATCH",
-                body: { name: route.name, enabled: route.enabled, stations: route.stations },
+                body: {
+                    name: route.name,
+                    departAt: route.departAt,
+                    enabled: route.enabled,
+                    stations: route.stations,
+                },
             });
             setNotice(`「${route.name}」已儲存`);
         } catch (error) {
@@ -172,10 +171,7 @@ export default function AdminRoutesPage() {
                 method: "POST",
                 body: { name: "新路線", stations: [] },
             });
-            setRoutes((previous) => [
-                ...previous,
-                { ...created, schedules: created.schedules ?? [] },
-            ]);
+            setRoutes((previous) => [...previous, { ...created, departAt: created.departAt ?? "" }]);
         } catch (error) {
             setNotice(error instanceof ApiError ? error.message : "新增路線失敗，請稍後再試");
         }
@@ -195,66 +191,13 @@ export default function AdminRoutesPage() {
         }
     };
 
-    const draftFor = (routeId: number): ScheduleDraft =>
-        scheduleDrafts[routeId] ?? { label: "", departAt: "" };
-
-    const setDraft = (routeId: number, patch: Partial<ScheduleDraft>) => {
-        setScheduleDrafts((previous) => ({
-            ...previous,
-            [routeId]: { ...draftFor(routeId), ...patch },
-        }));
-    };
-
-    const addSchedule = async (routeId: number) => {
-        const draft = draftFor(routeId);
-        if (!draft.label.trim() || !draft.departAt.trim()) {
-            return;
-        }
-        setNotice(null);
-        try {
-            const schedule = await api<ScheduleDto>("/api/admin/schedules", {
-                method: "POST",
-                body: { routeId, label: draft.label.trim(), departAt: draft.departAt.trim() },
-            });
-            setRoutes((previous) =>
-                previous.map((route) =>
-                    route.id === routeId
-                        ? { ...route, schedules: [...route.schedules, schedule] }
-                        : route,
-                ),
-            );
-            setDraft(routeId, { label: "", departAt: "" });
-        } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "新增班次失敗，請稍後再試");
-        }
-    };
-
-    const removeSchedule = async (routeId: number, schedule: ScheduleDto) => {
-        if (!window.confirm(`確定要刪除「${schedule.label}」這個班次嗎？`)) {
-            return;
-        }
-        setNotice(null);
-        try {
-            await api(`/api/admin/schedules/${schedule.id}`, { method: "DELETE" });
-            setRoutes((previous) =>
-                previous.map((route) =>
-                    route.id === routeId
-                        ? { ...route, schedules: route.schedules.filter((s) => s.id !== schedule.id) }
-                        : route,
-                ),
-            );
-        } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "刪除班次失敗，請稍後再試");
-        }
-    };
-
     return (
         <>
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">路線管理</h1>
                     <p className="mt-1.5 text-sm text-muted">
-                        新增、刪除路線與班次，調整站點順序，停用的路線／站點不會顯示給學生。
+                        新增、刪除路線，調整站點順序與發車時間，停用的路線／站點不會顯示給學生。
                     </p>
                 </div>
                 <button
@@ -280,11 +223,14 @@ export default function AdminRoutesPage() {
                     </p>
                 )}
                 {routes.map((route) => (
-                    <section key={route.id} className="rounded-3xl border border-line bg-surface p-6">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                    <section
+                        key={route.id}
+                        className="min-w-0 rounded-3xl border border-line bg-surface p-6"
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
                                 <span
-                                    className={`grid size-10 place-items-center rounded-xl ${
+                                    className={`grid size-10 shrink-0 place-items-center rounded-xl ${
                                         route.enabled
                                             ? "bg-accent-wash text-accent-ink"
                                             : "bg-bg text-muted"
@@ -297,11 +243,13 @@ export default function AdminRoutesPage() {
                                     onChange={(event) =>
                                         patchRoute(route.id, { name: event.target.value })
                                     }
-                                    className="w-32 rounded-lg border border-transparent bg-transparent px-2 py-1 text-base font-bold outline-none transition focus:border-accent focus:bg-bg"
+                                    className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-base font-bold outline-none transition focus:border-accent focus:bg-bg"
                                 />
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted">
-                                {route.enabled ? "營運中" : "已停開"}
+                            <div className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                                <span className="hidden sm:inline">
+                                    {route.enabled ? "營運中" : "已停開"}
+                                </span>
                                 <Toggle
                                     on={route.enabled}
                                     onChange={(next) => patchRoute(route.id, { enabled: next })}
@@ -312,12 +260,26 @@ export default function AdminRoutesPage() {
                             </div>
                         </div>
 
+                        <div className="mt-4 flex items-center gap-2">
+                            <label className="shrink-0 text-xs font-semibold text-muted">
+                                發車時間
+                            </label>
+                            <input
+                                value={route.departAt}
+                                onChange={(event) =>
+                                    patchRoute(route.id, { departAt: event.target.value })
+                                }
+                                placeholder="17:10"
+                                className="w-24 min-w-0 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none transition focus:border-accent"
+                            />
+                        </div>
+
                         <p className="mt-5 text-xs font-semibold text-muted">站點（依發車順序）</p>
                         <ul className="mt-2.5 space-y-2.5">
                             {route.stations.map((station, index) => (
                                 <li
                                     key={index}
-                                    className={`flex items-center gap-1.5 rounded-2xl border border-line px-3 py-2.5 transition ${
+                                    className={`flex flex-wrap items-center gap-1.5 rounded-2xl border border-line px-3 py-2.5 transition ${
                                         station.enabled ? "" : "opacity-50"
                                     }`}
                                 >
@@ -358,7 +320,7 @@ export default function AdminRoutesPage() {
                                                 time: event.target.value,
                                             })
                                         }
-                                        className="w-16 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center text-xs text-muted outline-none transition focus:border-accent focus:bg-bg"
+                                        className="w-16 shrink-0 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center text-xs text-muted outline-none transition focus:border-accent focus:bg-bg"
                                     />
                                     <Toggle
                                         on={station.enabled}
@@ -393,50 +355,6 @@ export default function AdminRoutesPage() {
                         >
                             {savingId === route.id ? "儲存中…" : "儲存變更"}
                         </button>
-
-                        <p className="mt-6 text-xs font-semibold text-muted">班次</p>
-                        <ul className="mt-2.5 space-y-2">
-                            {route.schedules.length === 0 && (
-                                <li className="rounded-xl bg-bg px-3 py-2.5 text-xs text-muted">
-                                    尚未設定班次，學生無法登記此路線。
-                                </li>
-                            )}
-                            {route.schedules.map((schedule) => (
-                                <li
-                                    key={schedule.id}
-                                    className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2"
-                                >
-                                    <span className="text-sm font-medium">
-                                        {schedule.label}
-                                        <span className="ml-2 text-xs text-muted">{schedule.departAt}</span>
-                                    </span>
-                                    <IconButton
-                                        label="刪除班次"
-                                        danger
-                                        onClick={() => removeSchedule(route.id, schedule)}
-                                    >
-                                        <TrashIcon className="size-3.5" />
-                                    </IconButton>
-                                </li>
-                            ))}
-                        </ul>
-                        <div className="mt-2.5 flex items-center gap-2">
-                            <input
-                                value={draftFor(route.id).label}
-                                onChange={(event) => setDraft(route.id, { label: event.target.value })}
-                                placeholder="班次名稱，如：放學班次"
-                                className="min-w-0 flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-xs outline-none transition focus:border-accent"
-                            />
-                            <input
-                                value={draftFor(route.id).departAt}
-                                onChange={(event) => setDraft(route.id, { departAt: event.target.value })}
-                                placeholder="17:10"
-                                className="w-16 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-center text-xs outline-none transition focus:border-accent"
-                            />
-                            <IconButton label="新增班次" onClick={() => addSchedule(route.id)}>
-                                <PlusIcon className="size-4" />
-                            </IconButton>
-                        </div>
                     </section>
                 ))}
             </div>

@@ -5,13 +5,14 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json package-lock.json ./
 COPY schema.prisma ./schema.prisma
+COPY prisma.config.ts ./prisma.config.ts
 RUN npm install
 
 # Dev Environment
 FROM deps AS dev
 ENV NODE_ENV=development
 EXPOSE 1135
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run dev"]
+CMD ["sh", "-c", "npx prisma db push && npm run dev"]
 
 # Build Environment
 FROM base AS builder
@@ -27,7 +28,8 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY schema.prisma ./schema.prisma
-CMD ["npx", "prisma", "db", "push", "--skip-generate"]
+COPY prisma.config.ts ./prisma.config.ts
+CMD ["npx", "prisma", "db", "push"]
 
 # Production Environment
 FROM base AS runner

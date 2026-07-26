@@ -26,14 +26,7 @@ export async function GET(request: Request) {
     const booking = await prisma.booking.findFirst({
         where: { studentId: auth.studentId, status: "SUCCESS" },
         include: {
-            schedule: {
-                select: {
-                    id: true,
-                    label: true,
-                    departAt: true,
-                    route: { select: { id: true, name: true } },
-                },
-            },
+            route: { select: { id: true, name: true, departAt: true } },
         },
     });
 

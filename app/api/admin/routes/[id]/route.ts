@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
@@ -17,19 +17,30 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return fail(400, "路線代碼格式錯誤");
     }
 
-    let body: { name?: unknown; enabled?: unknown; stations?: unknown };
+    let body: { name?: unknown; departAt?: unknown; enabled?: unknown; stations?: unknown };
     try {
         body = await request.json();
     } catch {
         return fail(400, "請求格式錯誤");
     }
 
-    const data: { name?: string; enabled?: boolean; stations?: Prisma.InputJsonValue } = {};
+    const data: {
+        name?: string;
+        departAt?: string;
+        enabled?: boolean;
+        stations?: Prisma.InputJsonValue;
+    } = {};
     if (body.name !== undefined) {
         if (typeof body.name !== "string" || !body.name.trim()) {
             return fail(400, "路線名稱格式錯誤");
         }
         data.name = body.name.trim().slice(0, 50);
+    }
+    if (body.departAt !== undefined) {
+        if (typeof body.departAt !== "string") {
+            return fail(400, "發車時間格式錯誤");
+        }
+        data.departAt = body.departAt.trim().slice(0, 20);
     }
     if (body.enabled !== undefined) {
         if (typeof body.enabled !== "boolean") {
@@ -57,7 +68,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     return ok(route);
 }
 
-/** DELETE /api/admin/routes/:id — 刪除路線（連同底下班次一併刪除） */
+/** DELETE /api/admin/routes/:id — 刪除路線 */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
     const auth = await requireAdmin(request);
     if (isResponse(auth)) {
@@ -79,7 +90,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         await prisma.route.delete({ where: { id: routeId } });
     } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-            return fail(409, "此路線底下的班次仍有登記紀錄，請先處理相關登記後再刪除");
+            return fail(409, "此路線仍有登記紀錄，請先處理相關登記後再刪除");
         }
         throw error;
     }

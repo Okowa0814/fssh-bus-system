@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail, ApiFailure } from "@/server/http";
@@ -12,7 +12,7 @@ const LOCK_TTL_MS = 5000;
  * POST /api/student/bookings — 自由選位「零失誤」防超賣流程
  * 第一道防線：Redis 分散式鎖（同座位僅放行第 1 個請求，其餘回 423）
  * 第二道防線：PostgreSQL 交易內雙重檢查
- * 第三道防線：@@unique([scheduleId, seatNumber]) 唯一約束
+ * 第三道防線：@@unique([routeId, seatNumber]) 唯一約束
  */
 export async function POST(request: Request) {
     const auth = await requireStudent(request);
@@ -20,17 +20,17 @@ export async function POST(request: Request) {
         return auth;
     }
 
-    let body: { scheduleId?: unknown; seatNumber?: unknown };
+    let body: { routeId?: unknown; seatNumber?: unknown };
     try {
         body = await request.json();
     } catch {
         return fail(400, "請求格式錯誤");
     }
 
-    const scheduleId = Number(body.scheduleId);
+    const routeId = Number(body.routeId);
     const seatNumber = Number(body.seatNumber);
-    if (!Number.isInteger(scheduleId) || !isValidSeat(seatNumber)) {
-        return fail(400, "班次或座位號碼格式錯誤");
+    if (!Number.isInteger(routeId) || !isValidSeat(seatNumber)) {
+        return fail(400, "路線或座位號碼格式錯誤");
     }
 
     const window = await getBookingWindow();
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     // ── 第一道防線：Redis 記憶體鎖 ──
-    const lockKey = seatLockKey(scheduleId, seatNumber);
+    const lockKey = seatLockKey(routeId, seatNumber);
     let lockToken: string | null;
     try {
         lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
@@ -53,12 +53,9 @@ export async function POST(request: Request) {
     try {
         // ── 第二道防線：資料庫交易內雙重檢查 ──
         const booking = await prisma.$transaction(async (tx) => {
-            const schedule = await tx.schedule.findUnique({
-                where: { id: scheduleId },
-                include: { route: { select: { enabled: true } } },
-            });
-            if (!schedule || !schedule.route.enabled) {
-                throw new ApiFailure(404, "查無此班次或路線已停開");
+            const route = await tx.route.findUnique({ where: { id: routeId } });
+            if (!route || !route.enabled) {
+                throw new ApiFailure(404, "查無此路線或路線已停開");
             }
 
             const mine = await tx.booking.findFirst({
@@ -69,7 +66,7 @@ export async function POST(request: Request) {
             }
 
             const existing = await tx.booking.findUnique({
-                where: { scheduleId_seatNumber: { scheduleId, seatNumber } },
+                where: { routeId_seatNumber: { routeId, seatNumber } },
             });
             if (existing?.status === "SUCCESS") {
                 throw new ApiFailure(409, "此座位剛被其他同學登記，請改選其他座位");
@@ -84,7 +81,7 @@ export async function POST(request: Request) {
                 });
             }
             return tx.booking.create({
-                data: { studentId: auth.studentId, scheduleId, seatNumber },
+                data: { studentId: auth.studentId, routeId, seatNumber },
                 include: bookingInclude,
             });
         });
@@ -107,12 +104,7 @@ export async function POST(request: Request) {
 }
 
 const bookingInclude = {
-    schedule: {
-        select: {
-            id: true,
-            label: true,
-            departAt: true,
-            route: { select: { id: true, name: true } },
-        },
+    route: {
+        select: { id: true, name: true, departAt: true },
     },
 } satisfies Prisma.BookingInclude;

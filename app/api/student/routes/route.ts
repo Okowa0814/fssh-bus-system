@@ -13,23 +13,17 @@ export async function GET(request: Request) {
     const routes = await prisma.route.findMany({
         where: { enabled: true },
         orderBy: { id: "asc" },
-        include: {
-            schedules: {
-                orderBy: { id: "asc" },
-                select: { id: true, label: true, departAt: true },
-            },
-        },
     });
 
     return ok(
         routes.map((route) => ({
             id: route.id,
             name: route.name,
+            departAt: route.departAt,
             enabled: route.enabled,
             stations: (route.stations as unknown as StationDto[]).filter(
                 (station) => station.enabled,
             ),
-            schedules: route.schedules,
         })),
     );
 }

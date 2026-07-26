@@ -1,6 +1,6 @@
 services:
     db:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
@@ -9,7 +9,9 @@ services:
         ports:
             - "5432:5432"
         volumes:
-            - ./data/dev-db:/var/lib/postgresql/data
+            # PostgreSQL 18+ 官方映像檔改成掛載到 /var/lib/postgresql（非 .../data），
+            # 資料實際存在版本相關子目錄，見 https://github.com/docker-library/postgres/pull/1259
+            - ./data/dev-db:/var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
             interval: 5s

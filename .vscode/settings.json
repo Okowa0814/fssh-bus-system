@@ -1,25 +1,36 @@
 {
-    
     "explorer.fileNesting.enabled": true,
     "explorer.fileNesting.expand": false,
     "explorer.fileNesting.patterns": {
         "Dockerfile": "docker-compose.*, .dockerignore",
-        "package.json": "package-lock.json, tsconfig.json, eslint.config.mjs, next.config.ts, postcss.config.mjs, next-env.d.ts",
     },
     "files.exclude": {
-        ".next": true,
-        "node_modules": true,
+        "package.json": true,
 
-        ".env": true,
-        "tsconfig.tsbuildinfo": true,
+        ".next": true,
+        ".claude": true,
+        "node_modules": true,
+        "scripts": true,
         "data": true,
+        "public": true,
 
         "Dockerfile": true,
-        "package.json": true,
-        "nginx.conf": true,
-        "scripts": true,
+        
+        "next.config.ts": true,
+        "next-env.d.ts": true,
+        "tsconfig.json": true,
+        "tsconfig.tsbuildinfo": true,
+        "eslint.config.mjs": true,
+        "postcss.config.mjs": true,
+
         "schema.prisma": true,
+        "prisma.config.ts": true,
+        
+        "nginx.conf": true,
+        
         ".gitignore": true,
 
+        ".env.example": true,
+        ".env": true,
     }
 }

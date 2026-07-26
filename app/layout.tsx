@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
+
+const notoSansTC = Noto_Sans_TC({
+    subsets: ["latin"],
+    weight: ["400", "500", "700"],
+    variable: "--font-noto-sans-tc",
+    display: "swap",
+});
 
 export const metadata: Metadata = {
     title: "鳳山高中專車登記系統",
@@ -25,7 +33,11 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="zh-Hant" className="h-full antialiased" suppressHydrationWarning>
+        <html
+            lang="zh-Hant"
+            className={`h-full antialiased ${notoSansTC.variable}`}
+            suppressHydrationWarning
+        >
             <head>
                 <script dangerouslySetInnerHTML={{ __html: themeScript }} />
             </head>

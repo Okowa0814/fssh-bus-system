@@ -31,7 +31,7 @@ export default function ProfilePage() {
         if (!me?.booking) {
             return;
         }
-        if (!window.confirm(`確定要取消「${me.booking.schedule.route.name}」座位 ${me.booking.seatNumber} 號的登記嗎？`)) {
+        if (!window.confirm(`確定要取消「${me.booking.route.name}」座位 ${me.booking.seatNumber} 號的登記嗎？`)) {
             return;
         }
         setCancelling(true);
@@ -97,13 +97,13 @@ export default function ProfilePage() {
                     ) : me?.booking ? (
                         <div className="mt-4">
                             <div className="rounded-2xl bg-bg p-5">
-                                <p className="text-base font-bold">
-                                    {me.booking.schedule.route.name}・{me.booking.schedule.label}
-                                </p>
-                                <p className="mt-1 flex items-center gap-1 text-sm text-muted">
-                                    <MapPinIcon className="size-4" />
-                                    {me.booking.schedule.departAt} 發車
-                                </p>
+                                <p className="text-base font-bold">{me.booking.route.name}</p>
+                                {me.booking.route.departAt && (
+                                    <p className="mt-1 flex items-center gap-1 text-sm text-muted">
+                                        <MapPinIcon className="size-4" />
+                                        {me.booking.route.departAt} 發車
+                                    </p>
+                                )}
                                 <p className="mt-4 text-4xl font-bold text-accent-ink">
                                     {me.booking.seatNumber}
                                     <span className="ml-1.5 text-sm font-medium text-muted">
@@ -112,7 +112,7 @@ export default function ProfilePage() {
                                 </p>
                                 <p className="mt-2 text-xs text-muted">
                                     登記時間：
-                                    {new Date(me.booking.createdAt).toLocaleString("zh-TW")}
+                                    {new Date(me.booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
                                 </p>
                             </div>
                             <button

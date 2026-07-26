@@ -13,18 +13,12 @@ export interface StationDto {
     enabled: boolean;
 }
 
-export interface ScheduleDto {
-    id: number;
-    label: string;
-    departAt: string;
-}
-
 export interface RouteDto {
     id: number;
     name: string;
+    departAt: string;
     enabled: boolean;
     stations: StationDto[];
-    schedules: ScheduleDto[];
 }
 
 export interface BookingDto {
@@ -32,7 +26,7 @@ export interface BookingDto {
     seatNumber: number;
     status: "SUCCESS" | "CANCELLED";
     createdAt: string;
-    schedule: ScheduleDto & { route: { id: number; name: string } };
+    route: { id: number; name: string; departAt: string };
 }
 
 export interface MeResponse {
@@ -53,7 +47,7 @@ export interface BookingWindowDto {
 }
 
 export interface SeatsResponse {
-    scheduleId: number;
+    routeId: number;
     totalSeats: number;
     takenSeats: number[];
 }

@@ -28,7 +28,6 @@ export default function BookingPage() {
 
     const [step, setStep] = useState(0);
     const [route, setRoute] = useState<RouteDto | null>(null);
-    const [scheduleId, setScheduleId] = useState<number | null>(null);
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
     const [seatsLoading, setSeatsLoading] = useState(false);
     const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
@@ -54,7 +53,7 @@ export default function BookingPage() {
         setSeatsLoading(true);
         setSelectedSeat(null);
         try {
-            const seats = await api<SeatsResponse>(`/api/student/schedules/${id}/seats`);
+            const seats = await api<SeatsResponse>(`/api/student/routes/${id}/seats`);
             setTakenSeats(seats.takenSeats);
         } catch {
             setTakenSeats([]);
@@ -65,23 +64,19 @@ export default function BookingPage() {
 
     const chooseRoute = (selected: RouteDto) => {
         setRoute(selected);
-        const first = selected.schedules[0];
-        setScheduleId(first ? first.id : null);
         setStep(1);
-        if (first) {
-            void loadSeats(first.id);
-        }
+        void loadSeats(selected.id);
     };
 
     const submit = async () => {
-        if (scheduleId === null || selectedSeat === null) {
+        if (route === null || selectedSeat === null) {
             return;
         }
         setSubmitting(true);
         try {
             const booking = await api<BookingDto>("/api/student/bookings", {
                 method: "POST",
-                body: { scheduleId, seatNumber: selectedSeat },
+                body: { routeId: route.id, seatNumber: selectedSeat },
             });
             setResult({ ok: true, booking });
         } catch (error) {
@@ -98,8 +93,8 @@ export default function BookingPage() {
     const retry = () => {
         setResult(null);
         setStep(1);
-        if (scheduleId !== null) {
-            void loadSeats(scheduleId);
+        if (route !== null) {
+            void loadSeats(route.id);
         }
     };
 
@@ -122,8 +117,8 @@ export default function BookingPage() {
                             <p className="mt-2 text-sm leading-relaxed text-muted">
                                 開放時間為
                                 <br />
-                                {new Date(window_.start).toLocaleString("zh-TW")}
-                                <br />～ {new Date(window_.end).toLocaleString("zh-TW")}
+                                {new Date(window_.start).toLocaleString("zh-TW", { hour12: false })}
+                                <br />～ {new Date(window_.end).toLocaleString("zh-TW", { hour12: false })}
                             </p>
                         ) : (
                             <p className="mt-2 text-sm text-muted">開放時間請留意學校公告。</p>
@@ -137,8 +132,7 @@ export default function BookingPage() {
                         </span>
                         <h2 className="mt-4 text-lg font-bold">你已完成登記</h2>
                         <p className="mt-2 text-sm text-muted">
-                            {existing.schedule.route.name}・{existing.schedule.label}・座位{" "}
-                            {existing.seatNumber} 號
+                            {existing.route.name}・座位 {existing.seatNumber} 號
                         </p>
                         <p className="mt-1 text-xs text-muted">如需改選，請先於身份頁取消原登記。</p>
                         <Link
@@ -204,30 +198,9 @@ export default function BookingPage() {
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
                                         <h2 className="text-lg font-bold">{route.name}</h2>
-                                        {route.schedules.length > 1 ? (
-                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                {route.schedules.map((schedule) => (
-                                                    <button
-                                                        key={schedule.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setScheduleId(schedule.id);
-                                                            void loadSeats(schedule.id);
-                                                        }}
-                                                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
-                                                            scheduleId === schedule.id
-                                                                ? "bg-accent text-white"
-                                                                : "border border-line bg-surface text-muted hover:text-fg"
-                                                        }`}
-                                                    >
-                                                        {schedule.label} {schedule.departAt}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        ) : (
+                                        {route.departAt && (
                                             <p className="mt-0.5 text-sm text-muted">
-                                                {route.schedules[0]?.label}・
-                                                {route.schedules[0]?.departAt} 發車
+                                                {route.departAt} 發車
                                             </p>
                                         )}
                                     </div>
@@ -240,11 +213,7 @@ export default function BookingPage() {
                                     </button>
                                 </div>
 
-                                {scheduleId === null ? (
-                                    <p className="py-10 text-center text-sm text-muted">
-                                        此路線尚未開放班次。
-                                    </p>
-                                ) : seatsLoading ? (
+                                {seatsLoading ? (
                                     <p className="py-10 text-center text-sm text-muted">
                                         座位載入中…
                                     </p>
@@ -271,7 +240,7 @@ export default function BookingPage() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => scheduleId !== null && loadSeats(scheduleId)}
+                                        onClick={() => void loadSeats(route.id)}
                                         className="text-xs text-muted underline-offset-2 hover:underline"
                                     >
                                         重新整理座位狀態
@@ -289,13 +258,12 @@ export default function BookingPage() {
                                         </span>
                                         <h2 className="mt-5 text-xl font-bold">登記成功！</h2>
                                         <div className="mt-4 rounded-2xl bg-bg p-5 text-sm">
-                                            <p className="font-semibold">
-                                                {result.booking.schedule.route.name}・
-                                                {result.booking.schedule.label}
-                                            </p>
-                                            <p className="mt-1 text-muted">
-                                                {result.booking.schedule.departAt} 發車
-                                            </p>
+                                            <p className="font-semibold">{result.booking.route.name}</p>
+                                            {result.booking.route.departAt && (
+                                                <p className="mt-1 text-muted">
+                                                    {result.booking.route.departAt} 發車
+                                                </p>
+                                            )}
                                             <p className="mt-3 text-3xl font-bold text-success-ink">
                                                 {result.booking.seatNumber}
                                                 <span className="ml-1 text-sm font-medium text-muted">

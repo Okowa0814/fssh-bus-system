@@ -4,7 +4,9 @@ const nextConfig: NextConfig = {
     // Docker 部署使用 standalone 輸出，映像檔只帶必要檔案
     output: "standalone",
     poweredByHeader: false,
-    serverExternalPackages: ["@prisma/client", "ioredis", "google-auth-library"],
+    // 允許區網其他裝置存取開發伺服器（生產環境的 standalone 輸出不受影響）
+    allowedDevOrigins: ["192.168.50.35"],
+    serverExternalPackages: ["@prisma/adapter-pg", "pg", "ioredis", "google-auth-library"],
     async headers() {
         return [
             {

@@ -1,13 +1,13 @@
 // 鳳山高中專車登記系統 — 資料庫 Schema
-// 四張核心資料表：User / Route / Schedule / Booking，外加 Setting 存放登記時間等系統設定
+// 三張核心資料表：User / Route / Booking，外加 Setting 存放登記時間等系統設定
 
 generator client {
-    provider = "prisma-client-js"
+    provider = "prisma-client"
+    output   = "./lib/generated/prisma"
 }
 
 datasource db {
     provider = "postgresql"
-    url      = env("DATABASE_URL")
 }
 
 // 使用者表：以學號為主鍵，由 Google 登入時自動 Upsert
@@ -22,41 +22,30 @@ model User {
     bookings       Booking[]
 }
 
-// 路線表：stations 為 JSON 陣列 [{ name, time, enabled }]
+// 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, time, enabled }]
 model Route {
-    id        Int        @id @default(autoincrement())
-    name      String
-    stations  Json
-    enabled   Boolean    @default(true)
-    schedules Schedule[]
-}
-
-// 班次表（車次）：Booking 透過 scheduleId 對應到實際發車班次
-model Schedule {
     id       Int       @id @default(autoincrement())
-    routeId  Int
-    label    String // 例如「放學班次」
-    departAt String // 顯示用發車時間，例如 "17:10"
-    route    Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+    name     String
+    departAt String    @default("") // 顯示用發車時間，例如 "17:10"
+    stations Json
+    enabled  Boolean   @default(true)
     bookings Booking[]
-
-    @@index([routeId])
 }
 
-// 登記紀錄表：同一班次的同一個座位，全資料庫只能有一筆紀錄（終極防線）
+// 登記紀錄表：同一路線的同一個座位，全資料庫只能有一筆紀錄（終極防線）
 // 取消時保留該列並改為 CANCELLED，重新登記時直接更新該列，確保唯一約束恆成立
 model Booking {
     id         Int      @id @default(autoincrement())
     studentId  String
-    scheduleId Int
+    routeId    Int
     seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
     status     String   @default("SUCCESS") // SUCCESS / CANCELLED
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
     student    User     @relation(fields: [studentId], references: [studentId])
-    schedule   Schedule @relation(fields: [scheduleId], references: [id])
+    route      Route    @relation(fields: [routeId], references: [id])
 
-    @@unique([scheduleId, seatNumber])
+    @@unique([routeId, seatNumber])
     @@index([studentId])
 }
 

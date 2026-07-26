@@ -38,14 +38,14 @@ export default function AdminPage() {
     }, []);
 
     const routeNames = useMemo(
-        () => [...new Set(bookings.map((booking) => booking.schedule.route.name))],
+        () => [...new Set(bookings.map((booking) => booking.route.name))],
         [bookings],
     );
 
     const filtered = useMemo(
         () =>
             bookings.filter((booking) => {
-                if (routeFilter !== "all" && booking.schedule.route.name !== routeFilter) {
+                if (routeFilter !== "all" && booking.route.name !== routeFilter) {
                     return false;
                 }
                 if (statusFilter !== "all" && booking.status !== statusFilter) {
@@ -105,9 +105,7 @@ export default function AdminPage() {
                     ...routeNames.map((name) => ({
                         label: name,
                         value: bookings.filter(
-                            (booking) =>
-                                booking.schedule.route.name === name &&
-                                booking.status === "SUCCESS",
+                            (booking) => booking.route.name === name && booking.status === "SUCCESS",
                         ).length,
                     })),
                 ].map((stat) => (
@@ -192,7 +190,7 @@ export default function AdminPage() {
                             <tr className="border-b border-line text-xs text-muted">
                                 <th className="py-3 pr-4 font-medium">學號</th>
                                 <th className="py-3 pr-4 font-medium">姓名</th>
-                                <th className="py-3 pr-4 font-medium">路線／班次</th>
+                                <th className="py-3 pr-4 font-medium">路線</th>
                                 <th className="py-3 pr-4 font-medium">座位</th>
                                 <th className="py-3 pr-4 font-medium">狀態</th>
                                 <th className="py-3 font-medium">登記時間</th>
@@ -212,9 +210,7 @@ export default function AdminPage() {
                                         {booking.student.studentId}
                                     </td>
                                     <td className="py-3 pr-4">{booking.student.name}</td>
-                                    <td className="py-3 pr-4">
-                                        {booking.schedule.route.name}・{booking.schedule.label}
-                                    </td>
+                                    <td className="py-3 pr-4">{booking.route.name}</td>
                                     <td className="py-3 pr-4 font-semibold">
                                         {booking.seatNumber} 號
                                     </td>
@@ -222,7 +218,7 @@ export default function AdminPage() {
                                         <StatusChip status={booking.status} />
                                     </td>
                                     <td className="py-3 text-xs text-muted">
-                                        {new Date(booking.createdAt).toLocaleString("zh-TW")}
+                                        {new Date(booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
                                     </td>
                                 </tr>
                             ))}

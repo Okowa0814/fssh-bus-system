@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         <AuthProvider user={user} logout={logout}>
-            <AppShell user={user} onLogout={logout}>
+            <AppShell>
                 {children}
             </AppShell>
         </AuthProvider>

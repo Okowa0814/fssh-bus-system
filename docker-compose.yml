@@ -56,7 +56,7 @@ services:
             - busnet
 
     db:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
@@ -64,7 +64,9 @@ services:
             POSTGRES_DB: ${POSTGRES_DB}
         volumes:
             # 掛載至實體主機，容器重啟資料不遺失
-            - ./data/postgres:/var/lib/postgresql/data
+            # PostgreSQL 18+ 官方映像檔改成掛載到 /var/lib/postgresql（非 .../data），
+            # 資料實際存在版本相關子目錄，見 https://github.com/docker-library/postgres/pull/1259
+            - ./data/postgres:/var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
             interval: 5s
