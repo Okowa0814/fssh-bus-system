@@ -5,14 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
 import type { MeResponse } from "@/lib/types";
-import { StatusChip } from "@/components/StatusChip";
-import { MapPinIcon } from "@/components/icons";
 
 export default function ProfilePage() {
     const { user } = useCurrentUser();
     const [me, setMe] = useState<MeResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [cancelling, setCancelling] = useState(false);
+    const [cancelOpen, setCancelOpen] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
 
     const load = useCallback(() => {
@@ -31,13 +30,11 @@ export default function ProfilePage() {
         if (!me?.booking) {
             return;
         }
-        if (!window.confirm(`確定要取消「${me.booking.route.name}」座位 ${me.booking.seatNumber} 號的登記嗎？`)) {
-            return;
-        }
         setCancelling(true);
         setMessage(null);
         try {
             await api(`/api/student/bookings/${me.booking.id}`, { method: "DELETE" });
+            setCancelOpen(false);
             load();
         } catch (error) {
             setMessage(error instanceof ApiError ? error.message : "取消失敗，請稍後再試");
@@ -47,101 +44,153 @@ export default function ProfilePage() {
     };
 
     const info = me?.user;
+    const booking = me?.booking ?? null;
+
+    const rows = [
+        { k: "姓名", v: info?.name ?? user.name, mono: false },
+        { k: "學號", v: info?.studentId ?? user.sub, mono: true },
+        { k: "入學學年", v: (info?.enrollmentYear ?? user.enrollmentYear) || "—", mono: false },
+        { k: "學校信箱", v: info?.email ?? user.email, mono: true },
+    ];
 
     return (
-        <>
-            <h1 className="text-2xl font-bold tracking-tight">我的身份</h1>
-            <p className="mt-1.5 text-sm text-muted">個人資訊與專車登記狀態。</p>
+        <div className="flex flex-col gap-5.5">
+            <div>
+                <p className="font-mono text-[11px] tracking-wide text-muted uppercase">我的票夾</p>
+                <h1 className="mt-2 text-[clamp(22px,3.4vw,30px)] font-bold tracking-tight">
+                    {loading ? "載入中…" : booking ? "今天的車票" : "還沒有票"}
+                </h1>
+            </div>
 
-            <div className="mt-7 grid gap-4 md:grid-cols-2">
-                {/* 個人資訊 */}
-                <section className="rounded-3xl border border-line bg-surface p-6">
-                    <div className="flex items-center gap-4">
-                        <span className="grid size-14 place-items-center rounded-2xl bg-accent text-xl font-bold text-white">
-                            {(info?.name ?? user.name).charAt(0)}
-                        </span>
+            {!loading && booking && (
+                <div className="w-full max-w-md overflow-hidden rounded-card bg-surface shadow-card-lg">
+                    <div className="h-1 bg-accent" />
+                    <div className="flex flex-col gap-4.5 px-6 pt-5.5 pb-4.5">
+                        <div className="flex items-center gap-2 font-mono text-[11px] tracking-wide text-success uppercase">
+                            <span className="size-1.5 rounded-full bg-success" />
+                            今日有效
+                        </div>
                         <div>
-                            <h2 className="text-lg font-bold">{info?.name ?? user.name}</h2>
-                            <p className="text-sm text-muted">
-                                {info?.isAdmin ? "管理員" : "學生"}
+                            <p className="text-2xl font-bold tracking-tight">{booking.route.name}</p>
+                            <p className="mt-1 text-[13px] text-muted">
+                                登記時間：
+                                {new Date(booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
                             </p>
                         </div>
-                    </div>
-                    <dl className="mt-6 space-y-3 text-sm">
-                        <div className="flex justify-between gap-4">
-                            <dt className="shrink-0 text-muted">學號</dt>
-                            <dd className="font-semibold">{info?.studentId ?? user.sub}</dd>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                            <dt className="shrink-0 text-muted">入學學年</dt>
-                            <dd className="font-semibold">
-                                {(info?.enrollmentYear ?? user.enrollmentYear) || "—"}
-                            </dd>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                            <dt className="shrink-0 text-muted">學校信箱</dt>
-                            <dd className="break-all font-semibold">{info?.email ?? user.email}</dd>
-                        </div>
-                    </dl>
-                </section>
-
-                {/* 登記座位 */}
-                <section className="rounded-3xl border border-line bg-surface p-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-semibold text-muted">專車登記</h2>
-                        {me?.booking && <StatusChip status={me.booking.status} />}
-                    </div>
-
-                    {loading ? (
-                        <p className="mt-4 text-sm text-muted">載入中…</p>
-                    ) : me?.booking ? (
-                        <div className="mt-4">
-                            <div className="rounded-2xl bg-bg p-5">
-                                <p className="text-base font-bold">{me.booking.route.name}</p>
-                                {me.booking.route.departAt && (
-                                    <p className="mt-1 flex items-center gap-1 text-sm text-muted">
-                                        <MapPinIcon className="size-4" />
-                                        {me.booking.route.departAt} 發車
+                        <div className="flex items-end gap-8">
+                            {booking.route.departAt && (
+                                <div>
+                                    <p className="text-[11px] text-muted">發車</p>
+                                    <p className="mt-0.5 font-mono text-[28px] font-medium">
+                                        {booking.route.departAt}
                                     </p>
-                                )}
-                                <p className="mt-4 text-4xl font-bold text-accent-ink">
-                                    {me.booking.seatNumber}
-                                    <span className="ml-1.5 text-sm font-medium text-muted">
-                                        號座位
-                                    </span>
-                                </p>
-                                <p className="mt-2 text-xs text-muted">
-                                    登記時間：
-                                    {new Date(me.booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-[11px] text-muted">座位</p>
+                                <p className="mt-0.5 font-mono text-[28px] font-medium text-accent">
+                                    {booking.seatNumber}
                                 </p>
                             </div>
+                            <div className="ml-auto size-13 rounded-lg bg-[repeating-conic-gradient(var(--fg)_0%_25%,var(--surface)_0%_50%)] bg-[length:9px_9px]" />
+                        </div>
+                    </div>
+                    <div className="relative h-6">
+                        <div className="absolute top-0 -left-3 size-6 rounded-full bg-bg" />
+                        <div className="absolute top-0 -right-3 size-6 rounded-full bg-bg" />
+                        <div className="absolute top-3 right-4.5 left-4.5 h-px bg-[repeating-linear-gradient(90deg,var(--line)_0_5px,transparent_5px_11px)]" />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 px-6 pt-1 pb-4.5">
+                        <span className="text-xs text-muted">開放時間內可以取消</span>
+                        <button
+                            type="button"
+                            onClick={() => setCancelOpen(true)}
+                            className="rounded-field border border-line px-3.5 py-2 text-[12.5px] text-muted transition hover:border-danger hover:text-danger-ink"
+                        >
+                            取消登記
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {!loading && !booking && (
+                <div className="flex max-w-md flex-col items-start gap-3 rounded-card border border-dashed border-line p-8.5">
+                    <p className="text-[15px] font-medium">票夾是空的</p>
+                    <p className="text-[13.5px] leading-relaxed text-muted">
+                        今天還沒有登記。登記完成後，電子票會出現在這裡。
+                    </p>
+                    <Link
+                        href="/booking"
+                        className="rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
+                    >
+                        去登記
+                    </Link>
+                </div>
+            )}
+
+            {message && (
+                <p className="max-w-md rounded-field bg-danger-wash px-4 py-3 text-center text-sm text-danger-ink">
+                    {message}
+                </p>
+            )}
+
+            <div className="flex max-w-md flex-col gap-0.5">
+                <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">我的資料</p>
+                {rows.map((row) => (
+                    <div
+                        key={row.k}
+                        className="flex items-baseline justify-between gap-5 border-b border-line py-3"
+                    >
+                        <span className="text-[13px] text-muted">{row.k}</span>
+                        <span
+                            className={`text-right break-all ${row.mono ? "font-mono text-[13px] text-muted" : "text-[13.5px] font-medium"}`}
+                        >
+                            {row.v}
+                        </span>
+                    </div>
+                ))}
+                <p className="mt-4 text-xs leading-relaxed text-muted">
+                    資料由校務系統同步，如有錯誤請洽學務處生活輔導組。
+                </p>
+            </div>
+
+            {cancelOpen && (
+                <div
+                    onClick={() => !cancelling && setCancelOpen(false)}
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[3px]"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex w-full max-w-md flex-col gap-4 rounded-t-card bg-surface px-6 pt-5.5 pb-7.5 shadow-card-lg"
+                    >
+                        <div className="mx-auto h-1 w-9 rounded-full bg-line" />
+                        <div>
+                            <p className="text-[19px] font-bold tracking-tight">要放掉這個位子嗎？</p>
+                            <p className="mt-2 text-sm leading-relaxed text-muted">
+                                取消後座位會馬上開放給其他同學，開放時間內你還是可以重新登記。
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2.5">
                             <button
                                 type="button"
-                                onClick={cancel}
                                 disabled={cancelling}
-                                className="mt-4 w-full rounded-xl border border-line px-5 py-2.5 text-sm font-semibold text-danger-ink transition hover:bg-danger-wash disabled:opacity-40"
+                                onClick={cancel}
+                                className="rounded-field border border-line py-3.5 text-[15px] font-medium text-danger-ink transition hover:border-danger hover:bg-danger-wash disabled:opacity-50"
                             >
-                                {cancelling ? "取消中…" : "取消登記"}
+                                {cancelling ? "取消中…" : "確定取消登記"}
                             </button>
-                            {message && (
-                                <p className="mt-3 rounded-xl bg-danger-wash px-4 py-3 text-center text-sm text-danger-ink">
-                                    {message}
-                                </p>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="mt-4 rounded-2xl bg-bg p-6 text-center">
-                            <p className="text-sm text-muted">尚未登記座位。</p>
-                            <Link
-                                href="/booking"
-                                className="mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                            <button
+                                type="button"
+                                disabled={cancelling}
+                                onClick={() => setCancelOpen(false)}
+                                className="rounded-field bg-fg py-3.5 text-[15px] font-medium text-bg disabled:opacity-50"
                             >
-                                前往登記
-                            </Link>
+                                先留著
+                            </button>
                         </div>
-                    )}
-                </section>
-            </div>
-        </>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

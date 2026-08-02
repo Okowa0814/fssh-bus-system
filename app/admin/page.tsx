@@ -87,37 +87,43 @@ export default function AdminPage() {
         }
     };
 
+    const kpis = [
+        { label: "有效登記", value: successCount, unit: "人" },
+        { label: "已取消", value: bookings.length - successCount, unit: "人" },
+        ...routeNames.map((name) => ({
+            label: name,
+            value: bookings.filter(
+                (booking) => booking.route.name === name && booking.status === "SUCCESS",
+            ).length,
+            unit: "人",
+        })),
+    ];
+
     return (
-        <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-5.5">
+            <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">登記總覽</h1>
-                    <p className="mt-1.5 text-sm text-muted">所有專車登記紀錄與登記時間管理。</p>
+                    <p className="font-mono text-[11px] tracking-wide text-muted uppercase">管理後台</p>
+                    <h1 className="mt-2 text-[clamp(20px,3vw,26px)] font-bold tracking-tight">今日登記概況</h1>
                 </div>
                 {window_ && <StatusChip status={window_.open ? "OPEN" : "CLOSED"} />}
             </div>
 
             {/* 統計 */}
-            <section className="mt-7 grid grid-cols-2 gap-4 md:grid-cols-4">
-                {[
-                    { label: "有效登記", value: successCount },
-                    { label: "已取消", value: bookings.length - successCount },
-                    ...routeNames.map((name) => ({
-                        label: name,
-                        value: bookings.filter(
-                            (booking) => booking.route.name === name && booking.status === "SUCCESS",
-                        ).length,
-                    })),
-                ].map((stat) => (
-                    <div key={stat.label} className="rounded-3xl border border-line bg-surface p-5">
-                        <p className="text-xs font-medium text-muted">{stat.label}</p>
-                        <p className="mt-1.5 text-2xl font-bold">{stat.value}</p>
+            <section className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+                {kpis.map((stat) => (
+                    <div key={stat.label} className="flex flex-col gap-2 rounded-field border border-line bg-surface p-4.5">
+                        <p className="text-xs text-muted">{stat.label}</p>
+                        <p className="flex items-baseline gap-1.5">
+                            <span className="font-mono text-[26px] font-medium tracking-tight">{stat.value}</span>
+                            <span className="font-mono text-xs text-muted">{stat.unit}</span>
+                        </p>
                     </div>
                 ))}
             </section>
 
             {/* 登記時間設定 */}
-            <section className="mt-7 rounded-3xl border border-line bg-surface p-6">
+            <section className="rounded-card bg-surface p-6 shadow-card">
                 <h2 className="text-sm font-semibold text-muted">登記開放時間</h2>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
                     <label className="text-xs font-medium text-muted">
@@ -126,7 +132,7 @@ export default function AdminPage() {
                             type="datetime-local"
                             value={start}
                             onChange={(event) => setStart(event.target.value)}
-                            className="mt-1.5 block rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg outline-none focus:border-accent"
+                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-sm text-fg outline-none focus:border-accent"
                         />
                     </label>
                     <label className="text-xs font-medium text-muted">
@@ -135,14 +141,14 @@ export default function AdminPage() {
                             type="datetime-local"
                             value={end}
                             onChange={(event) => setEnd(event.target.value)}
-                            className="mt-1.5 block rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-fg outline-none focus:border-accent"
+                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-sm text-fg outline-none focus:border-accent"
                         />
                     </label>
                     <button
                         type="button"
                         onClick={saveWindow}
                         disabled={saving}
-                        className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+                        className="rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg transition disabled:opacity-40"
                     >
                         {saving ? "儲存中…" : "儲存"}
                     </button>
@@ -151,19 +157,19 @@ export default function AdminPage() {
             </section>
 
             {/* 篩選 + 清單 */}
-            <section className="mt-7 rounded-3xl border border-line bg-surface p-6">
-                <div className="flex flex-wrap items-center gap-3">
+            <section className="rounded-card bg-surface p-6 shadow-card">
+                <div className="flex flex-wrap items-center gap-2.5">
                     <input
                         type="search"
                         placeholder="搜尋學號或姓名…"
                         value={keyword}
                         onChange={(event) => setKeyword(event.target.value)}
-                        className="w-56 rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+                        className="w-56 rounded-field border border-line bg-surface2 px-3.5 py-2.5 text-sm outline-none focus:border-accent"
                     />
                     <select
                         value={routeFilter}
                         onChange={(event) => setRouteFilter(event.target.value)}
-                        className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+                        className="rounded-field border border-line bg-surface2 px-3.5 py-2.5 text-sm outline-none focus:border-accent"
                     >
                         <option value="all">全部路線</option>
                         {routeNames.map((name) => (
@@ -175,19 +181,19 @@ export default function AdminPage() {
                     <select
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value)}
-                        className="rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-accent"
+                        className="rounded-field border border-line bg-surface2 px-3.5 py-2.5 text-sm outline-none focus:border-accent"
                     >
                         <option value="all">全部狀態</option>
                         <option value="SUCCESS">登記成功</option>
                         <option value="CANCELLED">已取消</option>
                     </select>
-                    <span className="ml-auto text-xs text-muted">共 {filtered.length} 筆</span>
+                    <span className="ml-auto font-mono text-xs text-muted">共 {filtered.length} 筆</span>
                 </div>
 
                 <div className="mt-4 overflow-x-auto">
                     <table className="w-full min-w-[640px] text-left text-sm">
                         <thead>
-                            <tr className="border-b border-line text-xs text-muted">
+                            <tr className="border-b border-line text-[10.5px] tracking-wide text-muted uppercase">
                                 <th className="py-3 pr-4 font-medium">學號</th>
                                 <th className="py-3 pr-4 font-medium">姓名</th>
                                 <th className="py-3 pr-4 font-medium">路線</th>
@@ -204,20 +210,21 @@ export default function AdminPage() {
                                     </td>
                                 </tr>
                             )}
-                            {filtered.map((booking) => (
-                                <tr key={booking.id} className="border-b border-line last:border-0">
-                                    <td className="py-3 pr-4 font-semibold">
+                            {filtered.map((booking, i) => (
+                                <tr
+                                    key={booking.id}
+                                    className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface2" : ""}`}
+                                >
+                                    <td className="py-3 pr-4 font-mono font-medium">
                                         {booking.student.studentId}
                                     </td>
                                     <td className="py-3 pr-4">{booking.student.name}</td>
-                                    <td className="py-3 pr-4">{booking.route.name}</td>
-                                    <td className="py-3 pr-4 font-semibold">
-                                        {booking.seatNumber} 號
-                                    </td>
+                                    <td className="py-3 pr-4 text-muted">{booking.route.name}</td>
+                                    <td className="py-3 pr-4 font-mono font-medium">{booking.seatNumber}</td>
                                     <td className="py-3 pr-4">
                                         <StatusChip status={booking.status} />
                                     </td>
-                                    <td className="py-3 text-xs text-muted">
+                                    <td className="py-3 font-mono text-xs text-muted">
                                         {new Date(booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
                                     </td>
                                 </tr>
@@ -226,6 +233,6 @@ export default function AdminPage() {
                     </table>
                 </div>
             </section>
-        </>
+        </div>
     );
 }

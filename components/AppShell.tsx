@@ -1,111 +1,151 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-
 import { BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon, UserIcon } from "./icons";
-import { ThemeToggle } from "./ThemeToggle";
 
-const studentLinks = [
+type Icon = ComponentType<SVGProps<SVGSVGElement>>;
+
+const studentLinks: { href: string; label: string; icon: Icon }[] = [
     { href: "/", label: "首頁", icon: HomeIcon },
     { href: "/booking", label: "登記", icon: BusIcon },
-    { href: "/profile", label: "身份", icon: UserIcon },
     { href: "/routes", label: "路線", icon: MapPinIcon },
+    { href: "/profile", label: "我的", icon: UserIcon },
     { href: "/help", label: "說明", icon: HelpIcon },
 ];
 
-const adminLinks = [
+const adminLinks: { href: string; label: string; icon: Icon }[] = [
     { href: "/admin", label: "登記總覽", icon: ClipboardIcon },
     { href: "/admin/routes", label: "路線管理", icon: BusIcon },
 ];
 
-export function AppShell({ children }: {children: ReactNode;}) {
+const titleMap: Record<string, string> = {
+    "/": "專車登記",
+    "/booking": "登記座位",
+    "/routes": "路線時刻",
+    "/profile": "我的票夾",
+    "/help": "使用說明",
+    "/admin": "管理後台",
+    "/admin/routes": "路線管理",
+};
+
+function Logo({ size }: { size: number }) {
+    return (
+        <Image
+            src="/fssh-badge.png"
+            alt="鳳山高中校徽"
+            width={size}
+            height={size}
+            style={{ width: size, height: size }}
+            className="shrink-0 rounded-full"
+        />
+    );
+}
+
+function LogoutButton({ onClick, className = "" }: { onClick: () => void; className?: string }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label="登出"
+            title="登出"
+            className={`grid size-9 shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-danger hover:text-danger-ink ${className}`}
+        >
+            <LogoutIcon className="size-4.5" />
+        </button>
+    );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
     const { user, logout } = useCurrentUser();
     const pathname = usePathname();
     const links = user.isAdmin ? adminLinks : studentLinks;
+    const title = titleMap[pathname] ?? "專車登記";
 
     return (
-        <div className="flex min-h-dvh flex-col">
-            <header className="sticky top-0 z-10 border-b border-line bg-surface/90 backdrop-blur">
-                <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between pl-5 pr-2">
-
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <Image src="/fssh-badge.png" alt="鳳山高中校徽" width={36} height={36} className="rounded-full" />
-                
-                        <span className="text-xl font-bold tracking-wide">專車登記系統</span>
-                    </Link>
-                    
-                    {/* Desktop Navigation and Action Buttons */}
-                    <div className="flex items-center gap-1">
-
-                        {/* Desktop Navigation */}
-                        <nav className="hidden items-center gap-2 md:flex">
-                            {links.map(({ href, label, icon: Icon }) => (
-                                <Link
-                                    key={href}
-                                    href={href}
-                                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-3 text-base font-medium transition ${
-                                        pathname === href
-                                            ? "bg-fg/10 text-fg/90"
-                                            : "text-muted hover:bg-bg hover:text-fg"
-                                    }`}
-                                >
-                                    <Icon className="size-4.5" />
-                                    {label}
-                                </Link>
-                            ))}
-                        </nav>
-
-                        <ThemeToggle />
-                        
-                        {/* Logout Button */}
-                        <button
-                            type="button"
-                            onClick={logout}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted transition hover:bg-bg hover:text-fg"
-                        >
-                            <LogoutIcon className="size-4" />
-                            <span className="hidden sm:inline">登出</span>
-                        </button>
-                    </div>
+        <div className="flex min-h-dvh flex-col md:flex-row">
+            {/* 桌機側邊欄 */}
+            <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-line px-3.5 py-5 md:flex">
+                <div className="flex items-center gap-2.5 px-2 pb-4">
+                    <Logo size={32} />
+                    <span className="text-lg font-bold tracking-tight">專車登記</span>
                 </div>
-            </header>
 
-            <main className="mx-auto w-full max-w-5xl flex-1 px-5 pb-28 pt-8 md:pb-12">
-                {children}
-            </main>
-
-            {/* Mobile Navigation */}
-            <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/95 backdrop-blur md:hidden">
-                <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
+                <nav className="flex flex-col gap-0.5">
                     {links.map(({ href, label, icon: Icon }) => {
                         const active = pathname === href;
                         return (
                             <Link
                                 key={href}
                                 href={href}
-                                className={`flex flex-col items-center gap-1 px-3 py-2.5 text-[11px] font-medium ${
-                                    active ? "text-accent-ink" : "text-muted"
+                                className={`flex items-center gap-2.5 rounded-field px-3 py-2.5 text-[13.5px] transition ${
+                                    active ? "bg-accent-wash font-medium text-fg" : "text-muted hover:text-fg"
                                 }`}
                             >
-                                <span
-                                    className={`grid size-9 place-items-center rounded-full transition ${
-                                        active ? "bg-accent text-white" : ""
-                                    }`}
-                                >
-                                    <Icon className="size-5" />
-                                </span>
+                                <Icon className="size-4.5" />
                                 {label}
                             </Link>
                         );
                     })}
+                </nav>
+
+                <div className="mt-auto flex items-center gap-2.5 border-t border-line px-2 pt-3.5">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent-wash font-medium text-xs text-accent-ink">
+                        {user.name.charAt(0)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium">{user.name}</p>
+                        <p className="truncate font-mono text-[11px] text-muted">
+                            {user.enrollmentYear ? `${user.enrollmentYear} · ` : ""}
+                            {user.sub}
+                        </p>
+                    </div>
+                    <LogoutButton onClick={logout} />
                 </div>
-            </nav>
+            </aside>
+
+            <div className="flex min-w-0 flex-1 flex-col">
+                {/* 手機頂部列 */}
+                <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-bg px-4.5 py-3 md:hidden">
+                    <div className="flex items-center gap-2.5">
+                        <Logo size={28} />
+                        <span className="text-lg font-bold tracking-tight">{title}</span>
+                    </div>
+                    <LogoutButton onClick={logout} />
+                </header>
+
+                <main className="flex-1 px-4.5 pb-24 pt-5 md:px-11 md:pb-15 md:pt-9">
+                    <div className="mx-auto w-full max-w-5xl">{children}</div>
+                </main>
+
+                {/* 手機底部導覽列 */}
+                <nav className="sticky bottom-0 z-20 flex gap-0.5 border-t border-line bg-surface px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 md:hidden">
+                    {links.map(({ href, label, icon: Icon }) => {
+                        const active = pathname === href;
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                className="flex flex-1 flex-col items-center gap-1 rounded-field px-0.5 py-1.5"
+                            >
+                                <Icon
+                                    className={`size-5 transition ${active ? "text-accent" : "text-muted"}`}
+                                    strokeWidth={active ? 2.25 : 2}
+                                />
+                                <span
+                                    className={`text-[11px] ${active ? "font-medium text-fg" : "text-muted"}`}
+                                >
+                                    {label}
+                                </span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </div>
         </div>
     );
 }

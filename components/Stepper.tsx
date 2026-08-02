@@ -1,41 +1,35 @@
 "use client";
 
-import { CheckIcon } from "./icons";
-
 /** 漸進式步驟指示器（登記頁三步驟） */
 export function Stepper({ steps, current }: { steps: string[]; current: number }) {
     return (
-        <ol className="flex items-center">
+        <ol className="flex items-center gap-2.5">
             {steps.map((label, index) => {
                 const done = index < current;
                 const active = index === current;
                 return (
-                    <li key={label} className="flex flex-1 items-center last:flex-none">
-                        <div className="flex flex-col items-center gap-1.5">
-                            <span
-                                className={`grid size-9 place-items-center rounded-full text-sm font-semibold transition ${
-                                    done
-                                        ? "bg-success text-white"
-                                        : active
-                                          ? "bg-accent text-white"
-                                          : "border border-line bg-surface text-muted"
-                                }`}
-                            >
-                                {done ? <CheckIcon className="size-4" /> : index + 1}
-                            </span>
-                            <span
-                                className={`whitespace-nowrap text-xs font-medium ${
-                                    active ? "text-fg" : "text-muted"
-                                }`}
-                            >
-                                {label}
-                            </span>
-                        </div>
+                    <li key={label} className="flex min-w-0 flex-1 items-center gap-2.5 last:flex-none">
+                        <span
+                            className={`grid size-6 shrink-0 place-items-center rounded-full font-mono text-[11px] font-medium transition ${
+                                done
+                                    ? "bg-accent text-ink"
+                                    : active
+                                      ? "bg-fg text-bg"
+                                      : "border border-line text-muted"
+                            }`}
+                        >
+                            {done ? "✓" : index + 1}
+                        </span>
+                        <span
+                            className={`whitespace-nowrap text-[12.5px] ${
+                                active ? "font-medium text-fg" : "text-muted"
+                            }`}
+                        >
+                            {label}
+                        </span>
                         {index < steps.length - 1 && (
                             <span
-                                className={`mx-2 mb-5 h-0.5 flex-1 rounded-full ${
-                                    done ? "bg-success" : "bg-line"
-                                }`}
+                                className={`h-px min-w-2 flex-1 ${done ? "bg-accent" : "bg-line"}`}
                             />
                         )}
                     </li>

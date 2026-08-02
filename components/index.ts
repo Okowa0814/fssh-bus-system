@@ -4,5 +4,3 @@ export * from "./NotFoundCard";
 export * from "./SeatMap";
 export * from "./StatusChip";
 export * from "./Stepper";
-export * from "./ThemeToggle";
-export * from "./icons";

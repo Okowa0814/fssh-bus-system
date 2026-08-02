@@ -65,3 +65,8 @@ export interface LoginResponse {
     token: string;
     user: MeResponse["user"];
 }
+
+export interface PublicStatsDto {
+    routeCount: number;
+    totalSeats: number;
+}

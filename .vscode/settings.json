@@ -1,8 +1,8 @@
 {
     "explorer.fileNesting.enabled": true,
-    "explorer.fileNesting.expand": false,
     "explorer.fileNesting.patterns": {
         "Dockerfile": "docker-compose.*, .dockerignore",
+        "package.json": "package-lock.json",
     },
     "files.exclude": {
         "package.json": true,
@@ -12,7 +12,6 @@
         "node_modules": true,
         "scripts": true,
         "data": true,
-        "public": true,
 
         "Dockerfile": true,
         
