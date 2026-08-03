@@ -4,9 +4,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "next dev -p 1135",
+        "dev": "next dev",
         "build": "prisma generate && next build",
-        "start": "next start -p 1135",
+        "start": "next start",
         "lint": "eslint",
         "db:push": "prisma db push",
         "postinstall": "prisma generate"

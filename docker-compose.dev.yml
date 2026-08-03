@@ -1,6 +1,7 @@
 services:
     db:
         image: postgres:18-alpine
+        container_name: fssh-bus-db-dev
         restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
@@ -20,6 +21,7 @@ services:
 
     redis:
         image: redis:7-alpine
+        container_name: fssh-bus-redis-dev
         restart: unless-stopped
         command: redis-server --appendonly yes
         ports:
@@ -36,10 +38,11 @@ services:
         build:
             context: .
             target: dev
+        container_name: fssh-bus-nextjs-dev
         restart: unless-stopped
         env_file: .env
         ports:
-            - "1135:1135"
+            - "3000:3000"
         volumes:
             - .:/app
             - /app/node_modules

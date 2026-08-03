@@ -1,6 +1,7 @@
 services:
     nginx:
         image: nginx:1.27-alpine
+        container_name: fssh-bus-nginx
         restart: unless-stopped
         ports:
             - "80:80"
@@ -17,6 +18,7 @@ services:
     # SSL 憑證自動續期（首次簽發流程見 README）
     certbot:
         image: certbot/certbot
+        container_name: fssh-bus-certbot
         restart: unless-stopped
         volumes:
             - ./certbot/www:/var/www/certbot
@@ -29,10 +31,11 @@ services:
             target: runner
             args:
                 NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+        container_name: fssh-bus-nextjs
         restart: unless-stopped
         env_file: .env
         expose:
-            - "1135"
+            - "3000"
         depends_on:
             db:
                 condition: service_healthy
@@ -48,6 +51,7 @@ services:
         build:
             context: .
             target: migrate
+        container_name: fssh-bus-migrate
         env_file: .env
         depends_on:
             db:
@@ -57,6 +61,7 @@ services:
 
     db:
         image: postgres:18-alpine
+        container_name: fssh-bus-db
         restart: unless-stopped
         environment:
             POSTGRES_USER: ${POSTGRES_USER}
@@ -77,6 +82,7 @@ services:
 
     redis:
         image: redis:7-alpine
+        container_name: fssh-bus-redis
         restart: unless-stopped
         command: redis-server --appendonly yes
         volumes:
