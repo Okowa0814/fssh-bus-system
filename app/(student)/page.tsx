@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { api } from "@/services/api";
+import { api, ApiError } from "@/services/api";
+import { Ticket } from "@/components/Ticket";
 import type { MeResponse, BookingWindowDto, RouteDto } from "@/lib/types";
 
 function greeting(): string {
@@ -36,6 +37,9 @@ export default function HomePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [now, setNow] = useState(() => Date.now());
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelOpen, setCancelOpen] = useState(false);
+    const [message, setMessage] = useState<string | null>(null);
 
     const load = () => {
         setLoading(true);
@@ -55,7 +59,7 @@ export default function HomePage() {
     };
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- 掛載即抓資料，與 profile 頁一致的既有寫法
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- 掛載即抓資料，既有寫法
         load();
     }, []);
 
@@ -65,6 +69,30 @@ export default function HomePage() {
     }, []);
 
     const booked = me?.booking ?? null;
+    const info = me?.user;
+    const rows = [
+        { k: "姓名", v: info?.name ?? user.name, mono: false },
+        { k: "學號", v: info?.studentId ?? user.sub, mono: true },
+        { k: "入學學年", v: (info?.enrollmentYear ?? user.enrollmentYear) || "—", mono: false },
+        { k: "學校信箱", v: info?.email ?? user.email, mono: true },
+    ];
+
+    const cancel = async () => {
+        if (!booked) {
+            return;
+        }
+        setCancelling(true);
+        setMessage(null);
+        try {
+            await api(`/api/student/bookings/${booked.id}`, { method: "DELETE" });
+            setCancelOpen(false);
+            load();
+        } catch (err) {
+            setMessage(err instanceof ApiError ? err.message : "取消失敗，請稍後再試");
+        } finally {
+            setCancelling(false);
+        }
+    };
 
     return (
         <div className="flex flex-col gap-5.5">
@@ -100,180 +128,174 @@ export default function HomePage() {
                         重新載入
                     </button>
                 </div>
-            ) : !window_?.open ? (
-                <div className="flex flex-col gap-4 rounded-card bg-surface p-7 shadow-card">
-                    <div className="flex items-center gap-2 font-mono text-[11px] tracking-wide text-muted uppercase">
-                        <span className="size-1.5 rounded-full bg-warning" />
-                        非登記時間
-                    </div>
-                    <div>
-                        <p className="text-[clamp(22px,3.6vw,28px)] leading-snug font-bold tracking-tight">
-                            目前不在登記時間
-                        </p>
-                        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-muted">
-                            {window_?.start && window_?.end ? (
-                                <>
-                                    開放時間：
-                                    {new Date(window_.start).toLocaleString("zh-TW", { hour12: false })} ～{" "}
-                                    {new Date(window_.end).toLocaleString("zh-TW", { hour12: false })}
-                                </>
-                            ) : (
-                                "尚未公告登記時間，請留意學校公告。"
-                            )}
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
+            ) : booked ? (
+                <div className="flex flex-col items-center gap-4">
+                    <Ticket booking={booked} rows={rows} />
+
+                    <div className="flex w-full max-w-md items-center justify-between gap-3 rounded-field border border-line px-4.5 py-3">
+                        <span className="text-xs text-muted">開放時間內可以取消</span>
                         <button
                             type="button"
-                            disabled
-                            className="cursor-not-allowed rounded-field bg-surface2 px-5.5 py-3 text-sm font-medium text-muted"
-                        >
-                            立即登記
-                        </button>
-                        <Link
-                            href="/routes"
-                            className="rounded-field border border-line px-5.5 py-3 text-sm"
-                        >
-                            查看時刻表
-                        </Link>
-                    </div>
-                </div>
-            ) : booked ? (
-                <div className="relative flex flex-col gap-5 overflow-hidden rounded-card bg-fg p-7 text-bg shadow-card-lg">
-                    <div className="pointer-events-none absolute -right-18 -bottom-28 size-60 rounded-full bg-accent opacity-30 blur-sm" />
-                    <div className="relative flex items-center gap-2 font-mono text-[11px] tracking-wide text-success uppercase opacity-90">
-                        <span className="size-1.5 rounded-full bg-success" />
-                        已完成登記
-                    </div>
-                    <div className="relative flex flex-wrap items-end gap-6 md:gap-10">
-                        <div>
-                            <p className="text-xs opacity-60">今天搭乘</p>
-                            <p className="mt-1.5 text-[clamp(22px,3.4vw,30px)] leading-tight font-bold tracking-tight">
-                                {booked.route.name}
-                            </p>
-                        </div>
-                        <div className="flex gap-7">
-                            {booked.route.departAt && (
-                                <div>
-                                    <p className="text-[11px] opacity-60">發車</p>
-                                    <p className="mt-1 font-mono text-2xl font-medium">{booked.route.departAt}</p>
-                                </div>
-                            )}
-                            <div>
-                                <p className="text-[11px] opacity-60">座位</p>
-                                <p className="mt-1 font-mono text-2xl font-medium text-accent">
-                                    {booked.seatNumber}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="relative flex flex-wrap gap-2.5">
-                        <Link
-                            href="/profile"
-                            className="rounded-field bg-accent px-5.5 py-3 text-sm font-medium text-ink"
-                        >
-                            顯示電子票
-                        </Link>
-                        <Link
-                            href="/profile"
-                            className="rounded-field border border-white/20 px-5 py-3 text-sm opacity-85"
+                            onClick={() => setCancelOpen(true)}
+                            className="rounded-field border border-line px-3.5 py-2 text-[12.5px] text-muted transition hover:border-danger hover:text-danger-ink"
                         >
                             取消登記
-                        </Link>
+                        </button>
                     </div>
-                </div>
-            ) : routes.length === 0 ? (
-                <div className="flex flex-col items-center gap-2.5 rounded-card bg-surface p-10 text-center shadow-card">
-                    <span className="size-13 rounded-2xl border border-dashed border-line bg-surface2" />
-                    <p className="text-[19px] font-bold tracking-tight">今天沒有班次</p>
-                    <p className="max-w-[30ch] text-sm leading-relaxed text-muted">
-                        目前沒有開放的路線，請留意學校公告。
-                    </p>
-                    <Link
-                        href="/routes"
-                        className="mt-1.5 rounded-field border border-line px-4.5 py-2.5 text-sm"
-                    >
-                        看完整時刻表
-                    </Link>
+
+                    {message && (
+                        <p className="max-w-md rounded-field bg-danger-wash px-4 py-3 text-center text-sm text-danger-ink">
+                            {message}
+                        </p>
+                    )}
                 </div>
             ) : (
-                <div className="relative flex flex-col gap-5 overflow-hidden rounded-card bg-fg p-7 text-bg shadow-card-lg">
-                    <div className="pointer-events-none absolute -right-18 -bottom-28 size-60 rounded-full bg-accent opacity-30 blur-sm" />
-                    <div className="relative flex items-center gap-2 font-mono text-[11px] tracking-wide opacity-60 uppercase">
-                        <span className="size-1.5 rounded-full bg-success" />
-                        登記開放中
-                    </div>
-                    <div className="relative">
-                        <p className="text-[clamp(24px,4vw,34px)] leading-tight font-bold tracking-tight">
-                            今天還沒登記座位
-                        </p>
-                        <p className="mt-2.5 max-w-[34ch] text-sm leading-relaxed opacity-70">
-                            {window_?.end
-                                ? (
-                                    <>
-                                        距離截止還有{" "}
-                                        <span className="font-mono">{formatCountdown(window_.end, now)}</span>。
-                                    </>
-                                  )
-                                : "把握開放時間，先登記先選位。"}
-                        </p>
-                    </div>
-                    <div className="relative flex flex-wrap gap-2.5">
-                        <Link
-                            href="/booking"
-                            className="rounded-field bg-accent px-6.5 py-3.5 text-[15px] font-medium text-ink"
-                        >
-                            立即登記
-                        </Link>
-                        <Link
-                            href="/routes"
-                            className="rounded-field border border-white/20 px-5.5 py-3.5 text-[15px] opacity-85"
-                        >
-                            看路線
-                        </Link>
-                    </div>
-                </div>
-            )}
-
-            {!loading && !error && routes.length > 0 && (
-                <div>
-                    <p className="mb-3 font-mono text-[11px] tracking-wide text-muted uppercase">今日班次</p>
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                        {routes.map((route) => (
-                            <Link
-                                key={route.id}
-                                href={`/booking?routeId=${route.id}`}
-                                className="flex flex-col gap-1.5 rounded-field border border-line bg-surface px-4.5 py-4 transition hover:shadow-card"
-                            >
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-[15px] font-medium">{route.name}</span>
-                                    {route.departAt && (
-                                        <span className="font-mono text-[13px] text-muted">{route.departAt}</span>
+                <>
+                    {!window_?.open ? (
+                        <div className="flex flex-col gap-4 rounded-card bg-surface p-7 shadow-card">
+                            <div className="flex items-center gap-2 font-mono text-[11px] tracking-wide text-muted uppercase">
+                                <span className="size-1.5 rounded-full bg-warning" />
+                                非登記時間
+                            </div>
+                            <div>
+                                <p className="text-[clamp(22px,3.6vw,28px)] leading-snug font-bold tracking-tight">
+                                    目前不在登記時間
+                                </p>
+                                <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-muted">
+                                    {window_?.start && window_?.end ? (
+                                        <>
+                                            開放時間：
+                                            {new Date(window_.start).toLocaleString("zh-TW", { hour12: false })} ～{" "}
+                                            {new Date(window_.end).toLocaleString("zh-TW", { hour12: false })}
+                                        </>
+                                    ) : (
+                                        "尚未公告登記時間，請留意學校公告。"
                                     )}
-                                </div>
-                                <span className="text-xs text-muted">{route.stations.length} 個停靠站</span>
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2.5">
+                                <button
+                                    type="button"
+                                    disabled
+                                    className="cursor-not-allowed rounded-field bg-surface2 px-5.5 py-3 text-sm font-medium text-muted"
+                                >
+                                    立即登記
+                                </button>
+                                <Link
+                                    href="/routes"
+                                    className="rounded-field border border-line px-5.5 py-3 text-sm"
+                                >
+                                    查看時刻表
+                                </Link>
+                            </div>
+                        </div>
+                    ) : routes.length === 0 ? (
+                        <div className="flex flex-col items-center gap-2.5 rounded-card bg-surface p-10 text-center shadow-card">
+                            <span className="size-13 rounded-2xl border border-dashed border-line bg-surface2" />
+                            <p className="text-[19px] font-bold tracking-tight">沒有開放路線</p>
+                            <p className="max-w-[30ch] text-sm leading-relaxed text-muted">
+                                目前沒有開放的路線，請留意學校公告。
+                            </p>
+                            <Link
+                                href="/routes"
+                                className="mt-1.5 rounded-field border border-line px-4.5 py-2.5 text-sm"
+                            >
+                                看完整時刻表
                             </Link>
-                        ))}
+                        </div>
+                    ) : (
+                        <div className="relative flex flex-col gap-5 overflow-hidden rounded-card border border-line bg-surface p-7 shadow-card">
+                            <div className="pointer-events-none absolute -right-18 -bottom-28 size-60 rounded-full bg-accent opacity-[0.08] blur-sm" />
+                            <div className="relative flex items-center gap-2 font-mono text-[11px] tracking-wide text-muted uppercase">
+                                <span className="size-1.5 rounded-full bg-success" />
+                                登記開放中
+                            </div>
+                            <div className="relative">
+                                <p className="text-[clamp(24px,4vw,34px)] leading-tight font-bold tracking-tight">
+                                    還沒登記座位
+                                </p>
+                                <p className="mt-2.5 max-w-[34ch] text-sm leading-relaxed text-muted">
+                                    {window_?.end ? (
+                                        <>
+                                            距離截止還有{" "}
+                                            <span className="font-mono text-fg">
+                                                {formatCountdown(window_.end, now)}
+                                            </span>
+                                            。
+                                        </>
+                                    ) : (
+                                        "把握開放時間，先登記先選位。"
+                                    )}
+                                </p>
+                            </div>
+                            <div className="relative flex flex-wrap gap-2.5">
+                                <Link
+                                    href="/booking"
+                                    className="rounded-field bg-fg px-6.5 py-3.5 text-[15px] font-medium text-bg"
+                                >
+                                    立即登記
+                                </Link>
+                                <Link
+                                    href="/routes"
+                                    className="rounded-field border border-line px-5.5 py-3.5 text-[15px]"
+                                >
+                                    看路線
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col items-center gap-4">
+                        <Ticket booking={null} rows={rows} />
+                    </div>
+
+                    <Link
+                        href="/help"
+                        className="flex w-full flex-col gap-1 rounded-field border border-line bg-surface2 px-4.5 py-4 transition hover:bg-surface hover:shadow-card sm:max-w-xs"
+                    >
+                        <span className="text-sm font-medium">使用說明</span>
+                        <span className="text-xs text-muted">第一次登記看這裡</span>
+                    </Link>
+                </>
+            )}
+
+            {cancelOpen && (
+                <div
+                    onClick={() => !cancelling && setCancelOpen(false)}
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-[3px]"
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex w-full max-w-md flex-col gap-4 rounded-t-card bg-surface px-6 pt-5.5 pb-7.5 shadow-card-lg"
+                    >
+                        <div className="mx-auto h-1 w-9 rounded-full bg-line" />
+                        <div>
+                            <p className="text-[19px] font-bold tracking-tight">要放掉這個位子嗎？</p>
+                            <p className="mt-2 text-sm leading-relaxed text-muted">
+                                取消後座位會馬上開放給其他同學，開放時間內你還是可以重新登記。
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2.5">
+                            <button
+                                type="button"
+                                disabled={cancelling}
+                                onClick={cancel}
+                                className="rounded-field border border-line py-3.5 text-[15px] font-medium text-danger-ink transition hover:border-danger hover:bg-danger-wash disabled:opacity-50"
+                            >
+                                {cancelling ? "取消中…" : "確定取消登記"}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={cancelling}
+                                onClick={() => setCancelOpen(false)}
+                                className="rounded-field bg-fg py-3.5 text-[15px] font-medium text-bg disabled:opacity-50"
+                            >
+                                先留著
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
-
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                {[
-                    { label: "路線時刻", sub: "所有路線與停靠站", href: "/routes" },
-                    { label: "我的票夾", sub: "電子票與個人資料", href: "/profile" },
-                    { label: "使用說明", sub: "第一次登記看這裡", href: "/help" },
-                ].map((q) => (
-                    <Link
-                        key={q.href}
-                        href={q.href}
-                        className="flex flex-col gap-1 rounded-field border border-line bg-surface2 px-4.5 py-4 transition hover:bg-surface hover:shadow-card"
-                    >
-                        <span className="text-sm font-medium">{q.label}</span>
-                        <span className="text-xs text-muted">{q.sub}</span>
-                    </Link>
-                ))}
-            </div>
         </div>
     );
 }

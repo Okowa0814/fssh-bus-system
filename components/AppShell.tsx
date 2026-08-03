@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-import { BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon, UserIcon } from "./icons";
+import { BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon } from "./icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -14,7 +14,6 @@ const studentLinks: { href: string; label: string; icon: Icon }[] = [
     { href: "/", label: "首頁", icon: HomeIcon },
     { href: "/booking", label: "登記", icon: BusIcon },
     { href: "/routes", label: "路線", icon: MapPinIcon },
-    { href: "/profile", label: "我的", icon: UserIcon },
     { href: "/help", label: "說明", icon: HelpIcon },
 ];
 
@@ -27,7 +26,6 @@ const titleMap: Record<string, string> = {
     "/": "專車登記",
     "/booking": "登記座位",
     "/routes": "路線時刻",
-    "/profile": "我的票夾",
     "/help": "使用說明",
     "/admin": "管理後台",
     "/admin/routes": "路線管理",
@@ -53,7 +51,7 @@ function LogoutButton({ onClick, className = "" }: { onClick: () => void; classN
             onClick={onClick}
             aria-label="登出"
             title="登出"
-            className={`grid size-9 shrink-0 place-items-center rounded-full border border-line text-muted transition hover:border-danger hover:text-danger-ink ${className}`}
+            className={`grid size-9 shrink-0 place-items-center rounded-full text-muted transition hover:bg-danger-wash hover:text-danger-ink ${className}`}
         >
             <LogoutIcon className="size-4.5" />
         </button>
@@ -104,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                             {user.sub}
                         </p>
                     </div>
-                    <LogoutButton onClick={logout} />
+                    <LogoutButton onClick={logout} className="-mr-1" />
                 </div>
             </aside>
 
@@ -115,7 +113,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <Logo size={28} />
                         <span className="text-lg font-bold tracking-tight">{title}</span>
                     </div>
-                    <LogoutButton onClick={logout} />
+                    <LogoutButton onClick={logout} className="-mr-1.5" />
                 </header>
 
                 <main className="flex-1 px-4.5 pb-24 pt-5 md:px-11 md:pb-15 md:pt-9">

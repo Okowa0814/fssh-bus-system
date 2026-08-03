@@ -13,6 +13,7 @@ import type {
 } from "@/lib/types";
 import { Stepper } from "@/components/Stepper";
 import { SeatMap } from "@/components/SeatMap";
+import { StationTimeline } from "@/components/StationTimeline";
 
 const STEPS = ["選路線", "選座位", "完成"];
 
@@ -144,12 +145,12 @@ function BookingPageInner() {
                 <p className="text-sm text-muted">
                     {existing.route.name}・座位 {existing.seatNumber} 號
                 </p>
-                <p className="text-xs text-muted">如需改選，請先於「我的票夾」取消原登記。</p>
+                <p className="text-xs text-muted">如需改選，請先在首頁取消原登記。</p>
                 <Link
-                    href="/profile"
+                    href="/"
                     className="mt-2 inline-block rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
                 >
-                    前往我的票夾
+                    回首頁
                 </Link>
             </div>
         );
@@ -163,7 +164,7 @@ function BookingPageInner() {
                 <div className="flex flex-col gap-4">
                     <div>
                         <h2 className="text-[clamp(20px,3.2vw,26px)] font-bold tracking-tight">
-                            你今天要搭哪一台？
+                            你要搭哪一台？
                         </h2>
                         <p className="mt-1.5 text-sm leading-relaxed text-muted">
                             一台車一條路線，選好之後再挑位子。
@@ -190,42 +191,7 @@ function BookingPageInner() {
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex flex-col">
-                                    {item.stations.map((station, index) => {
-                                        const edge = index === 0 || index === item.stations.length - 1;
-                                        return (
-                                            <div
-                                                key={station.name}
-                                                className="flex min-h-6.5 items-center gap-3"
-                                            >
-                                                <span className="relative flex w-2 justify-center">
-                                                    <span
-                                                        className={`absolute w-px bg-line ${
-                                                            index === 0
-                                                                ? "top-1/2 bottom-0"
-                                                                : index === item.stations.length - 1
-                                                                  ? "top-0 bottom-1/2"
-                                                                  : "top-0 bottom-0"
-                                                        }`}
-                                                    />
-                                                    <span
-                                                        className={`relative size-1.5 rounded-full ${
-                                                            edge ? "bg-accent" : "bg-muted opacity-50"
-                                                        }`}
-                                                    />
-                                                </span>
-                                                <span className="w-9 font-mono text-xs text-muted">
-                                                    {station.time}
-                                                </span>
-                                                <span
-                                                    className={`text-[12.5px] ${edge ? "text-fg" : "text-muted"}`}
-                                                >
-                                                    {station.name}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                <StationTimeline stations={item.stations} dense />
                             </button>
                         ))}
                     </div>
@@ -359,7 +325,7 @@ function BookingPageInner() {
                                 <div className="relative h-6">
                                     <div className="absolute top-0 -left-3 size-6 rounded-full bg-bg" />
                                     <div className="absolute top-0 -right-3 size-6 rounded-full bg-bg" />
-                                    <div className="absolute top-3 right-4.5 left-4.5 h-px bg-[repeating-linear-gradient(90deg,var(--line)_0_5px,transparent_5px_11px)]" />
+                                    <div className="absolute top-3 right-4.5 left-4.5 h-px bg-[repeating-linear-gradient(90deg,var(--muted)_0_5px,transparent_5px_11px)]" />
                                 </div>
                                 <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-6">
                                     <div>
@@ -374,17 +340,12 @@ function BookingPageInner() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-2.5">
-                                <Link
-                                    href="/profile"
-                                    className="rounded-field bg-fg px-5.5 py-3 text-sm font-medium text-bg"
-                                >
-                                    加入我的票夾
-                                </Link>
-                                <Link href="/" className="rounded-field border border-line px-5 py-3 text-sm">
-                                    回首頁
-                                </Link>
-                            </div>
+                            <Link
+                                href="/"
+                                className="rounded-field bg-fg px-5.5 py-3 text-sm font-medium text-bg"
+                            >
+                                回首頁看車票
+                            </Link>
                         </>
                     ) : (
                         <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">

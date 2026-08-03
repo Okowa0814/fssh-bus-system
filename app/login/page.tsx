@@ -82,7 +82,7 @@ export default function LoginPage() {
                         系統
                     </h1>
                     <p className="max-w-[30ch] text-[15px] leading-relaxed text-muted">
-                        每天下午的座位，三十秒就登記好。用學校 Google 帳號登入，就能看到今天還剩幾個位子。
+                        每天下午的座位，三十秒就登記好。用學校 Google 帳號登入，就能看到還剩幾個位子。
                     </p>
                     {stats && stats.routeCount > 0 && (
                         <div className="flex items-center gap-2.5 font-mono text-[11px] text-muted">
