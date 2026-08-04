@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { api, setToken, decodeToken, ApiError } from "@/services/api";
 import type { LoginResponse, PublicStatsDto } from "@/lib/types";
 import { GoogleLoginButton } from "@/components/";
+import { BadgeIcon } from "@/components/icons";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -70,13 +70,7 @@ export default function LoginPage() {
 
                 {/* Icon Section */}
                 <div className="relative flex items-center gap-3">
-                    <Image
-                        src="/fssh-badge.png"
-                        alt="鳳山高中校徽"
-                        width={48}
-                        height={48}
-                        className="rounded-full"
-                    />
+                    <BadgeIcon size={48} />
                     <span className="text-xl font-medium text-muted">高雄市立鳳山高級中學</span>
                 </div>
 

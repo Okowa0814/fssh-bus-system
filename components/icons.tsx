@@ -1,7 +1,21 @@
-// 共用 inline SVG 圖示（stroke 沿用 currentColor，方便配色）
+import Image from "next/image";
 import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement>;
+
+// 校徽（點陣圖，非 stroke 線條圖示
+export function BadgeIcon({ size = 32, className }: { size?: number; className?: string }) {
+    return (
+        <Image
+            src="/fssh-badge.png"
+            alt="鳳山高中校徽"
+            width={size}
+            height={size}
+            style={{ width: size, height: size }}
+            className={`shrink-0 rounded-full ${className ?? ""}`}
+        />
+    );
+}
 
 function base(props: IconProps): IconProps {
     return {

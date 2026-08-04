@@ -1,12 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-import { BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon } from "./icons";
+import { BadgeIcon, BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon } from "./icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -25,23 +24,14 @@ const adminLinks: { href: string; label: string; icon: Icon }[] = [
 const titleMap: Record<string, string> = {
     "/": "專車登記",
     "/booking": "登記座位",
-    "/routes": "路線時刻",
+    "/routes": "路線總覽",
     "/help": "使用說明",
     "/admin": "管理後台",
     "/admin/routes": "路線管理",
 };
 
 function Logo({ size }: { size: number }) {
-    return (
-        <Image
-            src="/fssh-badge.png"
-            alt="鳳山高中校徽"
-            width={size}
-            height={size}
-            style={{ width: size, height: size }}
-            className="shrink-0 rounded-full"
-        />
-    );
+    return <BadgeIcon size={size} />;
 }
 
 function LogoutButton({ onClick, className = "" }: { onClick: () => void; className?: string }) {
@@ -66,13 +56,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     return (
         <div className="flex min-h-dvh flex-col md:flex-row">
-            {/* 桌機側邊欄 */}
+            {/* Desktop Sidebar */}
             <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-line px-3.5 py-5 md:flex">
+                {/* Logo & Title */}
                 <div className="flex items-center gap-2.5 px-2 pb-4">
                     <Logo size={32} />
                     <span className="text-lg font-bold tracking-tight">專車登記</span>
                 </div>
 
+                {/* Navigation */}
                 <nav className="flex flex-col gap-0.5">
                     {links.map(({ href, label, icon: Icon }) => {
                         const active = pathname === href;
@@ -91,6 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     })}
                 </nav>
 
+                {/* User Profile */}
                 <div className="mt-auto flex items-center gap-2.5 border-t border-line px-2 pt-3.5">
                     <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent-wash font-medium text-xs text-accent-ink">
                         {user.name.charAt(0)}
@@ -107,20 +100,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             </aside>
 
             <div className="flex min-w-0 flex-1 flex-col">
-                {/* 手機頂部列 */}
+                {/* Mobile Header */}
                 <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-bg px-4.5 py-3 md:hidden">
                     <div className="flex items-center gap-2.5">
                         <Logo size={28} />
-                        <span className="text-lg font-bold tracking-tight">{title}</span>
+                        <span className="text-xl font-bold tracking-tight">{title}</span>
                     </div>
                     <LogoutButton onClick={logout} className="-mr-1.5" />
                 </header>
-
+                
+                {/* Main Content */}
                 <main className="flex-1 px-4.5 pb-24 pt-5 md:px-11 md:pb-15 md:pt-9">
                     <div className="mx-auto w-full max-w-5xl">{children}</div>
                 </main>
 
-                {/* 手機底部導覽列 */}
+                {/* Mobile Footer Navigation */}
                 <nav className="sticky bottom-0 z-20 flex gap-0.5 border-t border-line bg-surface px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 md:hidden">
                     {links.map(({ href, label, icon: Icon }) => {
                         const active = pathname === href;

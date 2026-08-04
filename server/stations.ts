@@ -11,7 +11,7 @@ export function parseStations(input: unknown): StationDto[] | null {
             typeof item !== "object" ||
             item === null ||
             typeof (item as StationDto).name !== "string" ||
-            typeof (item as StationDto).time !== "string" ||
+            typeof (item as StationDto).arriveAt !== "string" ||
             typeof (item as StationDto).enabled !== "boolean"
         ) {
             return null;
@@ -19,7 +19,7 @@ export function parseStations(input: unknown): StationDto[] | null {
         const station = item as StationDto;
         stations.push({
             name: station.name.trim().slice(0, 50),
-            time: station.time.trim().slice(0, 20),
+            arriveAt: station.arriveAt.trim().slice(0, 20),
             enabled: station.enabled,
         });
     }

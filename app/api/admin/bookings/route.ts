@@ -20,7 +20,7 @@ export async function GET(request: Request) {
                     email: true,
                 },
             },
-            route: { select: { id: true, name: true, departAt: true } },
+            route: { select: { id: true, name: true, departAt: true, stations: true } },
         },
     });
 

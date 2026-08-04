@@ -112,6 +112,6 @@ export async function POST(request: Request) {
 
 const bookingInclude = {
     route: {
-        select: { id: true, name: true, departAt: true },
+        select: { id: true, name: true, departAt: true, stations: true },
     },
 } satisfies Prisma.BookingInclude;

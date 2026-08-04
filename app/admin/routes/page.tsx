@@ -106,7 +106,7 @@ export default function AdminRoutesPage() {
         setRoutes((previous) =>
             previous.map((route) =>
                 route.id === routeId
-                    ? { ...route, stations: [...route.stations, { name: "", time: "", enabled: true }] }
+                    ? { ...route, stations: [...route.stations, { name: "", arriveAt: "", enabled: true }] }
                     : route,
             ),
         );
@@ -255,9 +255,9 @@ export default function AdminRoutesPage() {
                                         className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-medium outline-none transition focus:border-accent focus:bg-surface2"
                                     />
                                     <input
-                                        value={station.time}
-                                        placeholder="時間"
-                                        onChange={(event) => patchStation(route.id, index, { time: event.target.value })}
+                                        value={station.arriveAt}
+                                        placeholder="到站"
+                                        onChange={(event) => patchStation(route.id, index, { arriveAt: event.target.value })}
                                         className="w-16 shrink-0 rounded-lg border border-transparent bg-transparent px-2 py-1 text-center font-mono text-xs text-muted outline-none transition focus:border-accent focus:bg-surface2"
                                     />
                                     <Toggle

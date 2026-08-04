@@ -30,6 +30,5 @@
         ".gitignore": true,
 
         ".env.example": true,
-        ".env": true,
     }
 }

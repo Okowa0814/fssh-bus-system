@@ -22,27 +22,27 @@ export default function HelpPage() {
 
     return (
         <div className="flex max-w-2xl flex-col gap-7">
-            <div>
-                <p className="font-mono text-[11px] tracking-wide text-muted uppercase">使用說明</p>
-                <h1 className="mt-2 text-[clamp(24px,4vw,34px)] leading-tight font-bold tracking-tight">
-                    第一次登記？
-                    <br />
-                    三十秒就搞定。
-                </h1>
-            </div>
+            {/* Header */}
+            <h1 className="mt-2 text-[clamp(32px,4vw,48px)] leading-tight font-bold tracking-tight">
+                第一次登記？
+                <br />
+                星期一分鐘就搞定。
+            </h1>
 
+            {/* Guide */}
             <div className="flex flex-col">
                 {guide.map((step) => (
                     <div key={step.n} className="flex gap-4.5 border-t border-line py-5">
-                        <span className="w-6 shrink-0 pt-0.5 font-mono text-[13px] text-accent">{step.n}</span>
+                        <span className="w-6 shrink-0 pt-0.5 font-mono text-lg text-accent">{step.n}</span>
                         <div>
-                            <p className="text-[17px] font-bold tracking-tight">{step.t}</p>
-                            <p className="mt-1.5 text-sm leading-relaxed text-muted">{step.d}</p>
+                            <p className="text-xl font-bold tracking-tight">{step.t}</p>
+                            <p className="mt-1.5  leading-relaxed text-muted">{step.d}</p>
                         </div>
                     </div>
                 ))}
             </div>
-
+            
+            {/* Routes Link */}
             <Link
                 href="/routes"
                 className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-6 transition hover:shadow-card"
@@ -53,15 +53,16 @@ export default function HelpPage() {
                 </div>
                 <span className="text-muted">→</span>
             </Link>
-
+            
+            {/* FAQ */}
             <div>
-                <p className="mb-1.5 font-mono text-[11px] tracking-wide text-muted uppercase">常見問題</p>
+                <p className="mb-1.5 font-mono text-lg tracking-wide text-muted uppercase">常見問題</p>
                 {faqs.map((faq, i) => (
                     <div key={faq.q} className="border-b border-line">
                         <button
                             type="button"
                             onClick={() => setOpen(open === i ? -1 : i)}
-                            className="flex w-full items-center justify-between gap-4 py-4 text-left text-[14.5px] font-medium"
+                            className="flex w-full items-center justify-between gap-4 py-4 text-left font-medium"
                         >
                             {faq.q}
                             <span

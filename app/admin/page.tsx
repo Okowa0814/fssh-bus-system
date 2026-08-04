@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/services/api";
 import type { AdminBookingDto, BookingWindowDto } from "@/lib/types";
-import { StatusChip } from "@/components/StatusChip";
+import { StatusChip } from "@/components";
 
 function toLocalInput(iso: string | null): string {
     if (!iso) {

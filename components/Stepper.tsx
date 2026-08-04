@@ -1,6 +1,6 @@
 "use client";
 
-/** 漸進式步驟指示器（登記頁三步驟） */
+// Stepper component for displaying a multi-step process
 export function Stepper({ steps, current }: { steps: string[]; current: number }) {
     return (
         <ol className="flex items-center gap-2.5">

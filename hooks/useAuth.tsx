@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+
 import { decodeToken, clearToken } from "@/services/api";
 import type { TokenPayload } from "@/lib/types";
 
@@ -31,19 +32,23 @@ function useAuthGuard(role: "student" | "admin") {
     const [user, setUser] = useState<TokenPayload | null>(null);
     const [status, setStatus] = useState<AuthStatus>("loading");
 
+    // Check if user is logged in and has the correct role
     useEffect(() => {
         const payload = decodeToken();
 
+        // Not logged in, redirect to login page
         if (!payload) {
             router.replace("/login");
             return;
         }
         
-        
+        // Logged in, but role mismatch
+        // Admin page, but not admin -> show 404
         if (role === "admin" && !payload.isAdmin) {
             setStatus("denied");
             return;
         }
+        // Student page, but admin -> redirect to admin page
         if (role === "student" && payload.isAdmin) {
             router.replace("/admin");
             return;
@@ -52,6 +57,7 @@ function useAuthGuard(role: "student" | "admin") {
         setStatus("ready");
     }, [router, role]);
 
+    // Logout function
     const logout = useCallback(() => {
         clearToken();
         router.replace("/login");

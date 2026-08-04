@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-/** 404 畫面：找不到頁面與「權限不符」共用（權限不符直接顯示 404，不洩漏頁面存在） */
 export function NotFoundCard() {
     return (
         <div className="grid min-h-dvh place-items-center bg-bg px-5">

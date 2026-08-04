@@ -13,7 +13,6 @@ import type {
 } from "@/lib/types";
 import { Stepper } from "@/components/Stepper";
 import { SeatMap } from "@/components/SeatMap";
-import { StationTimeline } from "@/components/StationTimeline";
 
 const STEPS = ["選路線", "選站點", "選座位", "完成"];
 
@@ -159,6 +158,10 @@ function BookingPageInner() {
         );
     }
 
+    const resultArriveAt =
+        result?.ok &&
+        result.booking.route.stations.find((s) => s.name === result.booking.station)?.arriveAt;
+
     return (
         <div className="flex flex-col gap-6">
             <Stepper steps={STEPS} current={step} />
@@ -194,7 +197,6 @@ function BookingPageInner() {
                                         </span>
                                     )}
                                 </div>
-                                <StationTimeline stations={item.stations} dense />
                             </button>
                         ))}
                     </div>
@@ -239,7 +241,7 @@ function BookingPageInner() {
                                     }`}
                                 >
                                     <p className="text-[15px] font-medium">{s.name}</p>
-                                    <span className="font-mono text-[13px] text-muted">{s.time}</span>
+                                    <span className="font-mono text-[13px] text-muted">{s.arriveAt}</span>
                                 </button>
                             ))}
                     </div>
@@ -349,11 +351,21 @@ function BookingPageInner() {
                                         <p className="mt-1 text-sm text-muted">{result.booking.station} 上車</p>
                                     </div>
                                     <div className="flex items-end justify-between gap-3">
-                                        <div>
-                                            <p className="text-[11px] text-muted">鳳山高中</p>
-                                            <p className="mt-0.5 font-mono text-2xl font-medium">
-                                                {result.booking.route.departAt || "—"}
-                                            </p>
+                                        <div className="flex gap-4">
+                                            <div>
+                                                <p className="text-[11px] text-muted">鳳山高中</p>
+                                                <p className="mt-0.5 font-mono text-2xl font-medium">
+                                                    {result.booking.route.departAt || "—"}
+                                                </p>
+                                            </div>
+                                            {resultArriveAt && (
+                                                <div>
+                                                    <p className="text-[11px] text-muted">到站</p>
+                                                    <p className="mt-0.5 font-mono text-2xl font-medium">
+                                                        {resultArriveAt}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex flex-1 items-center gap-1.5 pb-2">
                                             <div className="h-px flex-1 bg-line" />
