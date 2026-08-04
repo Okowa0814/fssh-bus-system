@@ -1,15 +1,9 @@
 import { prisma } from "@/server/db";
-import { requireStudent, isResponse } from "@/server/auth";
 import { ok } from "@/server/http";
 import type { StationDto } from "@/lib/types";
 
-/** GET /api/student/routes — 學生端路線清單（僅啟用中的路線與站點） */
-export async function GET(request: Request) {
-    const auth = await requireStudent(request);
-    if (isResponse(auth)) {
-        return auth;
-    }
-
+/** GET /api/public/routes — 無需登入，供登入頁查詢路線與停靠站資訊 */
+export async function GET() {
     const routes = await prisma.route.findMany({
         where: { enabled: true },
         orderBy: { id: "asc" },

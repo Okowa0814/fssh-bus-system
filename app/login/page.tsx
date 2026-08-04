@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { api, setToken, decodeToken, ApiError } from "@/services/api";
 import type { LoginResponse, PublicStatsDto } from "@/lib/types";
-import { GoogleLoginButton } from "@/components/";
+import { GoogleLoginButton, HelpGuideModal, RoutesModal } from "@/components/";
 import { BadgeIcon } from "@/components/icons";
 
 export default function LoginPage() {
@@ -69,9 +69,11 @@ export default function LoginPage() {
                 <div className="pointer-events-none absolute -top-28 -right-14 size-64 rounded-full bg-accent opacity-[0.07]" />
 
                 {/* Icon Section */}
-                <div className="relative flex items-center gap-3">
-                    <BadgeIcon size={48} />
-                    <span className="text-xl font-medium text-muted">高雄市立鳳山高級中學</span>
+                <div className="relative flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <BadgeIcon size={48} />
+                        <span className="text-xl font-medium text-muted">高雄市立鳳山高級中學</span>
+                    </div>
                 </div>
 
                 {/* Spacer */}
@@ -84,7 +86,7 @@ export default function LoginPage() {
                         系統
                     </h1>
 
-                    <p className="text-xl leading-relaxed text-muted">
+                    <p className="md:text-xl leading-relaxed text-muted">
                         每學期的校車座位，一分鐘就登記好。<br/>
                         用學校 Google 帳號登入，快速又方便。
                     </p>
@@ -96,6 +98,7 @@ export default function LoginPage() {
                             <span>{stats.totalSeats} 個座位</span>
                         </div>
                     )}
+
                 </div>
 
                 <div className="relative flex-1" />
@@ -103,12 +106,12 @@ export default function LoginPage() {
 
             {/* Login Card */}
             <div className="flex items-center justify-center px-7 py-11 md:px-14 md:py-16">
-                <div className="flex w-full max-w-sm flex-col gap-6.5">
 
+                <div className="flex w-full max-w-sm flex-col gap-6.5">
                     {/* Welcome Text Section */}
                     <div>
-                        <h2 className="text-4xl font-bold tracking-tight">歡迎回來</h2>
-                        <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                        <h2 className="text-4xl font-bold tracking-tight">歡迎</h2>
+                        <p className="hidden md:block mt-1.5 text-sm leading-relaxed text-muted">
                             請使用學校配發的 Google 帳號 (@fssh.khc.edu.tw) 登入
                         </p>
                     </div>
@@ -121,7 +124,13 @@ export default function LoginPage() {
                             <GoogleLoginButton onCredential={handleGoogleAuth} />
                         )}
                     </div>
-                    
+
+                    {/* Info Buttons */}
+                    <div className="flex items-center justify-center gap-8">
+                        <HelpGuideModal />
+                        <RoutesModal />
+                    </div>
+
                     {/* Dev Login Section (only visible in development mode) */}
                     {process.env.NODE_ENV !== "production" && (
                         <div className="flex flex-col gap-2.5 border-t border-line pt-4.5">
@@ -156,6 +165,7 @@ export default function LoginPage() {
                     )}
                 </div>
             </div>
+
         </div>
     );
 }

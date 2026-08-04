@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </main>
 
                 {/* Mobile Footer Navigation */}
-                <nav className="sticky bottom-0 z-20 flex gap-0.5 border-t border-line bg-surface px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 md:hidden">
+                <nav className="fixed inset-x-0 bottom-0 z-20 flex gap-0.5 border-t border-line bg-surface px-2.5 pb-[calc(8px+env(safe-area-inset-bottom))] pt-2 md:hidden">
                     {links.map(({ href, label, icon: Icon }) => {
                         const active = pathname === href;
                         return (

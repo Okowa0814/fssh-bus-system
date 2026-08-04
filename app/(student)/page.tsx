@@ -36,7 +36,7 @@ export default function HomePage() {
         - user: 目前登入的使用者資訊
         - me: 從 /api/student/me 取得的使用者資訊，包含是否已登記
         - window_: 從 /api/student/booking-window 取得的登記開放時間資訊
-        - routes: 從 /api/student/routes 取得的可登記路線資訊
+        - routes: 從 /api/public/routes 取得的可登記路線資訊
 
         - loading: 是否正在載入資料
         - error: 是否載入資料時發生錯誤
@@ -66,7 +66,7 @@ export default function HomePage() {
         Promise.all([
             api<MeResponse>("/api/student/me"),
             api<BookingWindowDto>("/api/student/booking-window"),
-            api<RouteDto[]>("/api/student/routes"),
+            api<RouteDto[]>("/api/public/routes"),
         ])
             .then(([meData, windowData, routesData]) => {
                 setMe(meData);
@@ -274,15 +274,16 @@ export default function HomePage() {
                         {/* Help link */}
                         <Link
                             href="/help"
-                            className="flex w-full items-center justify-between gap-3 rounded-field border border-line bg-surface2 px-5 py-4 transition hover:bg-surface hover:shadow-card sm:max-w-xs"
+                            className="flex w-full items-center justify-between gap-3 rounded-field border border-line bg-surface px-5 py-4 transition sm:max-w-xs"
                         >
                             <div className="flex flex-col gap-1">
-                                <span className="font-medium">使用說明</span>
-                                <span className="text-sm text-muted">第一次登記看這裡</span>
+                                <span className="font-medium text-lg">使用說明</span>
+                                <span className="text-muted">第一次登記看這裡</span>
                             </div>
                             <span className="text-muted text-xl">→</span>
                         </Link>
 
+                        {/* Ticket preview */}
                         <div className="flex flex-col items-center gap-4">
                             <Ticket booking={null} rows={rows} />
                         </div>

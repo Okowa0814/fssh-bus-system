@@ -89,7 +89,7 @@ export default function BookingPage() {
         Promise.all([
             api<BookingWindowDto>("/api/student/booking-window"),
             api<MeResponse>("/api/student/me"),
-            api<RouteDto[]>("/api/student/routes"),
+            api<RouteDto[]>("/api/public/routes"),
         ])
             .then(([windowData, meData, routesData]) => {
                 setWindow(windowData);
@@ -208,6 +208,7 @@ export default function BookingPage() {
                         </Link>
                     </div>
                 ) : (
+                    // Booking steps
                     <div className="flex flex-col gap-6">
                         <Stepper steps={STEPS} current={step} goto={setStep} />
 
@@ -268,6 +269,7 @@ export default function BookingPage() {
                                     <p className="py-10 text-center text-xl text-muted">這條路線目前沒有開放的站點。</p>
                                 )}
 
+                                {/* Stations list */ }
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                     {route.stations
                                         .filter((s) => s.enabled)
@@ -316,7 +318,9 @@ export default function BookingPage() {
                         {step === 3 && result && (
                             <div className="flex flex-col items-center gap-5 py-2">
                                 {result.ok ? (
-                                    <>
+                                    // Booking success
+                                    <>  
+                                        {/* Success message */ }
                                         <div className="flex flex-col items-center gap-2 text-center">
                                             <span className="grid size-11 place-items-center rounded-full bg-accent-wash text-[20px] text-accent">
                                                 ✓
@@ -329,6 +333,7 @@ export default function BookingPage() {
 
                                         <Ticket booking={result.booking} rows={rows} />
 
+                                        {/* Link to go back to home */ }
                                         <Link
                                             href="/"
                                             className="rounded-field bg-fg px-5.5 py-3 text-sm font-medium text-bg"
@@ -337,6 +342,7 @@ export default function BookingPage() {
                                         </Link>
                                     </>
                                 ) : (
+                                    // Booking fail
                                     <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
                                         <span className="grid size-13 place-items-center rounded-full bg-danger-wash text-[20px] text-danger-ink">
                                             ✕
