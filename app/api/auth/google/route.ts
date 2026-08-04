@@ -3,34 +3,33 @@ import { signToken } from "@/server/auth";
 import { ok, fail, ApiFailure } from "@/server/http";
 import { verifyGoogleCredential, parseStudentEmail, isAdminEmail } from "@/server/google";
 
-/**
- * POST /api/auth/google
- * Google 一鍵登入：驗證 credential → 網域篩選 → 學號拆解 → Upsert 使用者 → 簽發 JWT（30 分鐘）
- */
+/*
+- POST /api/auth/google
+- Google Login: Verify credential → Domain filter → Parse student ID → Upsert user → Sign JWT (30 minutes)
+*/
 export async function POST(request: Request) {
     let credential: unknown;
+
     try {
         ({ credential } = await request.json());
     } catch {
         return fail(400, "請求格式錯誤");
     }
-    if (typeof credential !== "string" || !credential) {
-        return fail(400, "缺少 Google 登入憑證");
-    }
 
+    if (typeof credential !== "string" || !credential) return fail(400, "缺少 Google 登入憑證");
+    
     try {
         const profile = await verifyGoogleCredential(credential);
         const admin = isAdminEmail(profile.email);
 
-        // 管理員帳號（如教職員信箱）可能不符合學號格式，改以信箱前綴作為識別碼
+        // Teachers and Admins can login without a student ID, but students must have a valid student ID
         let enrollmentYear = "";
         let studentId = profile.email.split("@")[0];
+        
         try {
             ({ enrollmentYear, studentId } = parseStudentEmail(profile.email));
         } catch (error) {
-            if (!admin) {
-                throw error;
-            }
+            if (!admin) throw error;
         }
 
         const user = await prisma.user.upsert({
@@ -69,9 +68,8 @@ export async function POST(request: Request) {
             },
         });
     } catch (error) {
-        if (error instanceof ApiFailure) {
-            return fail(error.status, error.message);
-        }
+        if (error instanceof ApiFailure) return fail(error.status, error.message);
+        
         console.error("Google 登入失敗:", error);
         return fail(500, "登入失敗，請稍後再試");
     }

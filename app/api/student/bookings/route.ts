@@ -5,6 +5,7 @@ import { ok, fail, ApiFailure } from "@/server/http";
 import { acquireLock, releaseLock, seatLockKey } from "@/server/lock";
 import { getBookingWindow } from "@/server/settings";
 import { isValidSeat } from "@/lib/seat";
+import type { StationDto } from "@/lib/types";
 
 const LOCK_TTL_MS = 5000;
 
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
         return auth;
     }
 
-    let body: { routeId?: unknown; seatNumber?: unknown };
+    let body: { routeId?: unknown; seatNumber?: unknown; station?: unknown };
     try {
         body = await request.json();
     } catch {
@@ -29,8 +30,9 @@ export async function POST(request: Request) {
 
     const routeId = Number(body.routeId);
     const seatNumber = Number(body.seatNumber);
-    if (!Number.isInteger(routeId) || !isValidSeat(seatNumber)) {
-        return fail(400, "路線或座位號碼格式錯誤");
+    const station = typeof body.station === "string" ? body.station : "";
+    if (!Number.isInteger(routeId) || !isValidSeat(seatNumber) || !station) {
+        return fail(400, "路線、座位或站點格式錯誤");
     }
 
     const window = await getBookingWindow();
@@ -58,6 +60,11 @@ export async function POST(request: Request) {
                 throw new ApiFailure(404, "查無此路線或路線已停開");
             }
 
+            const stations = route.stations as unknown as StationDto[];
+            if (!stations.some((s) => s.enabled && s.name === station)) {
+                throw new ApiFailure(400, "查無此站點或站點已停用");
+            }
+
             const mine = await tx.booking.findFirst({
                 where: { studentId: auth.studentId, status: "SUCCESS" },
             });
@@ -76,12 +83,12 @@ export async function POST(request: Request) {
             if (existing) {
                 return tx.booking.update({
                     where: { id: existing.id },
-                    data: { studentId: auth.studentId, status: "SUCCESS" },
+                    data: { studentId: auth.studentId, station, status: "SUCCESS" },
                     include: bookingInclude,
                 });
             }
             return tx.booking.create({
-                data: { studentId: auth.studentId, routeId, seatNumber },
+                data: { studentId: auth.studentId, routeId, seatNumber, station },
                 include: bookingInclude,
             });
         });

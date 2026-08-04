@@ -20,7 +20,6 @@ export default function AdminPage() {
     const [start, setStart] = useState("");
     const [end, setEnd] = useState("");
     const [saving, setSaving] = useState(false);
-    const [notice, setNotice] = useState<string | null>(null);
 
     const [routeFilter, setRouteFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -68,20 +67,19 @@ export default function AdminPage() {
 
     const saveWindow = async () => {
         if (!start || !end) {
-            setNotice("請填寫完整的開始與結束時間");
+            alert("請填寫完整的開始與結束時間");
             return;
         }
         setSaving(true);
-        setNotice(null);
         try {
             const updated = await api<BookingWindowDto>("/api/admin/booking-window", {
                 method: "PUT",
                 body: { start: new Date(start).toISOString(), end: new Date(end).toISOString() },
             });
             setWindow(updated);
-            setNotice("登記時間已更新");
+            alert("登記時間已更新");
         } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "儲存失敗，請稍後再試");
+            alert(error instanceof ApiError ? error.message : "儲存失敗，請稍後再試");
         } finally {
             setSaving(false);
         }
@@ -152,7 +150,6 @@ export default function AdminPage() {
                     >
                         {saving ? "儲存中…" : "儲存"}
                     </button>
-                    {notice && <p className="text-sm text-accent-ink">{notice}</p>}
                 </div>
             </section>
 
@@ -197,6 +194,7 @@ export default function AdminPage() {
                                 <th className="py-3 pr-4 font-medium">學號</th>
                                 <th className="py-3 pr-4 font-medium">姓名</th>
                                 <th className="py-3 pr-4 font-medium">路線</th>
+                                <th className="py-3 pr-4 font-medium">站點</th>
                                 <th className="py-3 pr-4 font-medium">座位</th>
                                 <th className="py-3 pr-4 font-medium">狀態</th>
                                 <th className="py-3 font-medium">登記時間</th>
@@ -205,7 +203,7 @@ export default function AdminPage() {
                         <tbody>
                             {filtered.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="py-10 text-center text-muted">
+                                    <td colSpan={7} className="py-10 text-center text-muted">
                                         沒有符合條件的登記紀錄。
                                     </td>
                                 </tr>
@@ -220,6 +218,7 @@ export default function AdminPage() {
                                     </td>
                                     <td className="py-3 pr-4">{booking.student.name}</td>
                                     <td className="py-3 pr-4 text-muted">{booking.route.name}</td>
+                                    <td className="py-3 pr-4 text-muted">{booking.station}</td>
                                     <td className="py-3 pr-4 font-mono font-medium">{booking.seatNumber}</td>
                                     <td className="py-3 pr-4">
                                         <StatusChip status={booking.status} />

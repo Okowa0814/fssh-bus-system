@@ -15,11 +15,9 @@ import { Stepper } from "@/components/Stepper";
 import { SeatMap } from "@/components/SeatMap";
 import { StationTimeline } from "@/components/StationTimeline";
 
-const STEPS = ["選路線", "選座位", "完成"];
+const STEPS = ["選路線", "選站點", "選座位", "完成"];
 
-type BookingResult =
-    | { ok: true; booking: BookingDto }
-    | { ok: false; message: string };
+type BookingResult = { ok: true; booking: BookingDto } | { ok: false };
 
 function BookingPageInner() {
     const searchParams = useSearchParams();
@@ -30,6 +28,7 @@ function BookingPageInner() {
 
     const [step, setStep] = useState(0);
     const [route, setRoute] = useState<RouteDto | null>(null);
+    const [selectedStation, setSelectedStation] = useState<string | null>(null);
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
     const [seatsLoading, setSeatsLoading] = useState(false);
     const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
@@ -52,11 +51,17 @@ function BookingPageInner() {
     const chooseRoute = useCallback(
         (selected: RouteDto) => {
             setRoute(selected);
+            setSelectedStation(null);
             setStep(1);
             void loadSeats(selected.id);
         },
         [loadSeats],
     );
+
+    const chooseStation = useCallback((stationName: string) => {
+        setSelectedStation(stationName);
+        setStep(2);
+    }, []);
 
     useEffect(() => {
         Promise.all([
@@ -81,30 +86,28 @@ function BookingPageInner() {
     }, []);
 
     const submit = async () => {
-        if (route === null || selectedSeat === null) {
+        if (route === null || selectedStation === null || selectedSeat === null) {
             return;
         }
         setSubmitting(true);
         try {
             const booking = await api<BookingDto>("/api/student/bookings", {
                 method: "POST",
-                body: { routeId: route.id, seatNumber: selectedSeat },
+                body: { routeId: route.id, station: selectedStation, seatNumber: selectedSeat },
             });
             setResult({ ok: true, booking });
         } catch (error) {
-            setResult({
-                ok: false,
-                message: error instanceof ApiError ? error.message : "登記失敗，請稍後再試",
-            });
+            alert(error instanceof ApiError ? error.message : "登記失敗，請稍後再試");
+            setResult({ ok: false });
         } finally {
             setSubmitting(false);
-            setStep(2);
+            setStep(3);
         }
     };
 
     const retry = () => {
         setResult(null);
-        setStep(1);
+        setStep(2);
         if (route !== null) {
             void loadSeats(route.id);
         }
@@ -143,7 +146,7 @@ function BookingPageInner() {
                 </span>
                 <h2 className="text-[19px] font-bold tracking-tight">你已完成登記</h2>
                 <p className="text-sm text-muted">
-                    {existing.route.name}・座位 {existing.seatNumber} 號
+                    {existing.route.name}・{existing.station}・座位 {existing.seatNumber} 號
                 </p>
                 <p className="text-xs text-muted">如需改選，請先在首頁取消原登記。</p>
                 <Link
@@ -199,10 +202,12 @@ function BookingPageInner() {
             )}
 
             {step === 1 && route && (
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap items-end justify-between gap-3">
                         <div>
-                            <h2 className="text-[clamp(20px,3.2vw,26px)] font-bold tracking-tight">挑一個位子</h2>
+                            <h2 className="text-[clamp(20px,3.2vw,26px)] font-bold tracking-tight">
+                                在哪一站上車？
+                            </h2>
                             <p className="mt-1.5 text-sm text-muted">
                                 {route.name}
                                 {route.departAt && ` · ${route.departAt} 發車`}
@@ -214,6 +219,49 @@ function BookingPageInner() {
                             className="text-[13px] text-muted underline decoration-line underline-offset-4"
                         >
                             換一條路線
+                        </button>
+                    </div>
+
+                    {route.stations.filter((s) => s.enabled).length === 0 && (
+                        <p className="py-10 text-center text-sm text-muted">這條路線目前沒有開放的站點。</p>
+                    )}
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {route.stations
+                            .filter((s) => s.enabled)
+                            .map((s) => (
+                                <button
+                                    key={s.name}
+                                    type="button"
+                                    onClick={() => chooseStation(s.name)}
+                                    className={`flex items-center justify-between gap-3.5 rounded-card border bg-surface p-5 text-left shadow-card transition ${
+                                        selectedStation === s.name ? "border-accent" : "border-line"
+                                    }`}
+                                >
+                                    <p className="text-[15px] font-medium">{s.name}</p>
+                                    <span className="font-mono text-[13px] text-muted">{s.time}</span>
+                                </button>
+                            ))}
+                    </div>
+                </div>
+            )}
+
+            {step === 2 && route && selectedStation && (
+                <div className="flex flex-col gap-5">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-[clamp(20px,3.2vw,26px)] font-bold tracking-tight">挑一個位子</h2>
+                            <p className="mt-1.5 text-sm text-muted">
+                                {route.name} · {selectedStation}
+                                {route.departAt && ` · ${route.departAt} 發車`}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setStep(1)}
+                            className="text-[13px] text-muted underline decoration-line underline-offset-4"
+                        >
+                            換站點
                         </button>
                     </div>
 
@@ -237,14 +285,10 @@ function BookingPageInner() {
                                         <span className="font-mono text-[13.5px]">{route.departAt}</span>
                                     </div>
                                 )}
-                                {route.stations.length > 0 && (
-                                    <div className="flex items-baseline justify-between gap-4">
-                                        <span className="text-[13px] text-muted">下車站</span>
-                                        <span className="text-[13.5px]">
-                                            {route.stations[route.stations.length - 1].name}
-                                        </span>
-                                    </div>
-                                )}
+                                <div className="flex items-baseline justify-between gap-4">
+                                    <span className="text-[13px] text-muted">上車站</span>
+                                    <span className="text-[13.5px]">{selectedStation}</span>
+                                </div>
                                 <div className="flex items-baseline justify-between gap-4">
                                     <span className="text-[13px] text-muted">座位</span>
                                     <span
@@ -277,7 +321,7 @@ function BookingPageInner() {
                 </div>
             )}
 
-            {step === 2 && result && (
+            {step === 3 && result && (
                 <div className="flex flex-col items-center gap-5 py-2">
                     {result.ok ? (
                         <>
@@ -302,6 +346,7 @@ function BookingPageInner() {
                                         <p className="text-2xl font-bold tracking-tight">
                                             {result.booking.route.name}
                                         </p>
+                                        <p className="mt-1 text-sm text-muted">{result.booking.station} 上車</p>
                                     </div>
                                     <div className="flex items-end justify-between gap-3">
                                         <div>
@@ -353,7 +398,6 @@ function BookingPageInner() {
                                 ✕
                             </span>
                             <h2 className="text-[19px] font-bold tracking-tight">登記失敗</h2>
-                            <p className="text-sm text-muted">{result.message}</p>
                             <button
                                 type="button"
                                 onClick={retry}

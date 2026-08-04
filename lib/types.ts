@@ -24,6 +24,7 @@ export interface RouteDto {
 export interface BookingDto {
     id: number;
     seatNumber: number;
+    station: string;
     status: "SUCCESS" | "CANCELLED";
     createdAt: string;
     route: { id: number; name: string; departAt: string };

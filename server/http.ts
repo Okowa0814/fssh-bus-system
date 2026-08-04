@@ -9,7 +9,7 @@ export function fail(status: number, message: string): NextResponse {
     return NextResponse.json({ message }, { status });
 }
 
-/** 業務流程中可直接丟出的錯誤，由路由層轉成對應的 HTTP 回應 */
+// Custom error class for API failures, allowing for structured error handling
 export class ApiFailure extends Error {
     status: number;
 

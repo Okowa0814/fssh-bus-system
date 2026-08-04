@@ -7,7 +7,7 @@
     --surface2: #f6f5f3;
     --fg: #0e0e0f;
     --muted: #6d6c6a;
-    --line: rgba(12, 12, 12, 0.1);
+    --line: rgba(12, 12, 12, 0.233);
     --accent: oklch(0.6 0.17 45);
     --accent-ink: var(--accent);
     --accent-wash: rgba(226, 120, 40, 0.12);

@@ -39,6 +39,7 @@ model Booking {
     studentId  String
     routeId    Int
     seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
+    station    String   @default("") // 學生選擇的上車站點名稱
     status     String   @default("SUCCESS") // SUCCESS / CANCELLED
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt

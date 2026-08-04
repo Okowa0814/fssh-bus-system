@@ -9,7 +9,7 @@ export interface GoogleProfile {
     name: string;
 }
 
-/** 驗證前端送來的 Google ID Token（GIS credential），回傳信箱與真實姓名 */
+// Verify the Google ID Token and return the user's profile 
 export async function verifyGoogleCredential(credential: string): Promise<GoogleProfile> {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     if (!clientId) {
@@ -36,17 +36,13 @@ export interface ParsedStudent {
     studentId: string;
 }
 
-/**
- * 網域篩選 + 學號拆解：
- * s25410372@fssh.khc.edu.tw → 第 2、3 碼為入學學年（25），其餘為正式學號（410372）
- */
+// Parse the student email to extract the "enrollment year" and "student ID"
 export function parseStudentEmail(email: string): ParsedStudent {
     const domain = (process.env.ALLOWED_EMAIL_DOMAIN ?? "fssh.khc.edu.tw").toLowerCase();
     const [prefix, host] = email.split("@");
 
-    if (host !== domain) {
-        throw new ApiFailure(403, `僅限本校帳號（@${domain}）登入`);
-    }
+    if (host !== domain) throw new ApiFailure(403, `僅限本校帳號（@${domain}）登入`);
+    
 
     const match = /^[a-z](\d{2})(\d{4,})$/i.exec(prefix);
     if (!match) {

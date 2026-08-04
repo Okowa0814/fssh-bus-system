@@ -1,16 +1,8 @@
-// 前端唯一的後端溝通層：所有頁面一律透過此模組呼叫 REST API（嚴格前後端分離）
+// === Frontend API Service ===
 import type { TokenPayload } from "@/lib/types";
 
+// 記得要加強key的安全性
 const TOKEN_KEY = "fssh_bus_token";
-
-export class ApiError extends Error {
-    status: number;
-
-    constructor(status: number, message: string) {
-        super(message);
-        this.status = status;
-    }
-}
 
 export function getToken(): string | null {
     if (typeof window === "undefined") return null; // While SSR, window is not available
@@ -52,20 +44,29 @@ export function decodeToken(): TokenPayload | null {
     }
 }
 
+// === API Request Function ===
 interface ApiOptions {
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     body?: unknown;
 }
 
+export class ApiError extends Error {
+    status: number;
+
+    constructor(status: number, message: string) {
+        super(message);
+        this.status = status;
+    }
+}
+
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
     const headers: Record<string, string> = {};
     const token = getToken();
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
-    if (options.body !== undefined) {
-        headers["Content-Type"] = "application/json";
-    }
+
+    if (token) headers.Authorization = `Bearer ${token}`;
+    
+    if (options.body !== undefined) headers["Content-Type"] = "application/json";
+    
 
     let response: Response;
     try {
@@ -81,9 +82,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     // token 過期 / 無效：清除並回登入頁
     if (response.status === 401) {
         clearToken();
-        if (window.location.pathname !== "/login") {
-            window.location.href = "/login";
-        }
+        if (window.location.pathname !== "/login") window.location.href = "/login";
         throw new ApiError(401, "登入已過期，請重新登入");
     }
 

@@ -64,7 +64,6 @@ function GlyphButton({
 export default function AdminRoutesPage() {
     const [routes, setRoutes] = useState<AdminRoute[]>([]);
     const [savingId, setSavingId] = useState<number | null>(null);
-    const [notice, setNotice] = useState<string | null>(null);
 
     useEffect(() => {
         api<AdminRoute[]>("/api/admin/routes")
@@ -142,7 +141,6 @@ export default function AdminRoutesPage() {
 
     const save = async (route: AdminRoute) => {
         setSavingId(route.id);
-        setNotice(null);
         try {
             await api(`/api/admin/routes/${route.id}`, {
                 method: "PATCH",
@@ -153,16 +151,15 @@ export default function AdminRoutesPage() {
                     stations: route.stations,
                 },
             });
-            setNotice(`「${route.name}」已儲存`);
+            alert(`「${route.name}」已儲存`);
         } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "儲存失敗，請稍後再試");
+            alert(error instanceof ApiError ? error.message : "儲存失敗，請稍後再試");
         } finally {
             setSavingId(null);
         }
     };
 
     const addRoute = async () => {
-        setNotice(null);
         try {
             const created = await api<AdminRoute>("/api/admin/routes", {
                 method: "POST",
@@ -170,7 +167,7 @@ export default function AdminRoutesPage() {
             });
             setRoutes((previous) => [...previous, { ...created, departAt: created.departAt ?? "" }]);
         } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "新增路線失敗，請稍後再試");
+            alert(error instanceof ApiError ? error.message : "新增路線失敗，請稍後再試");
         }
     };
 
@@ -178,13 +175,12 @@ export default function AdminRoutesPage() {
         if (!window.confirm(`確定要刪除「${route.name}」這條路線嗎？此動作無法復原。`)) {
             return;
         }
-        setNotice(null);
         try {
             await api(`/api/admin/routes/${route.id}`, { method: "DELETE" });
             setRoutes((previous) => previous.filter((r) => r.id !== route.id));
-            setNotice(`「${route.name}」已刪除`);
+            alert(`「${route.name}」已刪除`);
         } catch (error) {
-            setNotice(error instanceof ApiError ? error.message : "刪除失敗，請稍後再試");
+            alert(error instanceof ApiError ? error.message : "刪除失敗，請稍後再試");
         }
     };
 
@@ -206,10 +202,6 @@ export default function AdminRoutesPage() {
                     ＋ 新增路線
                 </button>
             </div>
-
-            {notice && (
-                <p className="rounded-field bg-accent-wash px-4 py-3 text-sm text-accent-ink">{notice}</p>
-            )}
 
             <div className="grid gap-4 lg:grid-cols-2">
                 {routes.length === 0 && (

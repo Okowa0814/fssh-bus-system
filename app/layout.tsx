@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
 
+// Define Fonts
 const notoSansTC = Noto_Sans_TC({
     subsets: ["latin"],
     weight: ["400", "500", "700"],
