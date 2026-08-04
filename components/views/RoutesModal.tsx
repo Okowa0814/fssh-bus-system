@@ -21,7 +21,7 @@ export function RoutesModal() {
             </button>
 
             {open && (
-                <div className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-5">
+                <div className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-3 md:p-5">
                     {/* Overlay */}
                     <button
                         type="button"
@@ -31,7 +31,7 @@ export function RoutesModal() {
                     />
 
                     {/* Panel */}
-                    <div className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-card bg-surface p-7 shadow-card md:p-9">
+                    <div className="relative max-h-[85dvh] w-full max-w-xl overflow-y-auto rounded-card bg-surface p-5 shadow-card md:p-9">
                         <button
                             type="button"
                             aria-label="關閉"
