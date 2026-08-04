@@ -41,12 +41,19 @@ export async function POST(request: Request) {
     }
 
     // ── 第一道防線：Redis 記憶體鎖 ──
+    // Redis 連線短暫抖動時重試一次，避免單次瞬斷就讓使用者看到系統忙碌
     const lockKey = seatLockKey(routeId, seatNumber);
     let lockToken: string | null;
     try {
         lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
     } catch {
-        return fail(503, "系統忙碌中，請稍後再試");
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 80));
+            lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
+        } catch (error) {
+            console.error("取得座位鎖失敗:", error);
+            return fail(503, "系統忙碌中，請稍後再試");
+        }
     }
     if (!lockToken) {
         return fail(423, "座位選取中／已被選取，請改選其他座位");

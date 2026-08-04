@@ -84,13 +84,13 @@ export default function LoginPage() {
                         系統
                     </h1>
 
-                    <p className="text-[15px] leading-relaxed text-muted">
+                    <p className="text-xl leading-relaxed text-muted">
                         每學期的校車座位，一分鐘就登記好。<br/>
                         用學校 Google 帳號登入，快速又方便。
                     </p>
 
                     {stats && stats.routeCount > 0 && (
-                        <div className="flex items-center gap-2.5 font-mono text-muted">
+                        <div className="flex items-center gap-2.5 font-mono text-xl text-muted">
                             <span>{stats.routeCount} 條路線</span>
                             <span>·</span>
                             <span>{stats.totalSeats} 個座位</span>

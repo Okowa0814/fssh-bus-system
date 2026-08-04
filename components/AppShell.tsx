@@ -57,11 +57,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     return (
         <div className="flex min-h-dvh flex-col md:flex-row">
             {/* Desktop Sidebar */}
-            <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-line px-3.5 py-5 md:flex">
+            <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-1 border-r border-line px-3.5 py-5 md:flex">
                 {/* Logo & Title */}
                 <div className="flex items-center gap-2.5 px-2 pb-4">
                     <Logo size={32} />
-                    <span className="text-lg font-bold tracking-tight">專車登記</span>
+                    <span className="text-xl font-bold tracking-tight">學生專車登記</span>
                 </div>
 
                 {/* Navigation */}
@@ -72,11 +72,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                             <Link
                                 key={href}
                                 href={href}
-                                className={`flex items-center gap-2.5 rounded-field px-3 py-2.5 text-[13.5px] transition ${
+                                className={`flex items-center gap-2.5 rounded-field px-3 py-2.5 text-lg transition ${
                                     active ? "bg-accent-wash font-medium text-fg" : "text-muted hover:text-fg"
                                 }`}
                             >
-                                <Icon className="size-4.5" />
+                                <Icon className="size-5" />
                                 {label}
                             </Link>
                         );
@@ -89,8 +89,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                         {user.name.charAt(0)}
                     </span>
                     <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-medium">{user.name}</p>
-                        <p className="truncate font-mono text-[11px] text-muted">
+                        <p className="truncate text-[15px] font-medium">{user.name}</p>
+                        <p className="truncate font-mono text-muted">
                             {user.enrollmentYear ? `${user.enrollmentYear} · ` : ""}
                             {user.sub}
                         </p>

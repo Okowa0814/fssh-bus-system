@@ -12,6 +12,7 @@
         "node_modules": true,
         "scripts": true,
         "data": true,
+        "public": true,
 
         "Dockerfile": true,
         
@@ -29,6 +30,7 @@
         
         ".gitignore": true,
 
+        ".env": true,
         ".env.example": true,
     }
 }

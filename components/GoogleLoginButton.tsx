@@ -10,6 +10,7 @@ declare global {
                     initialize: (config: {
                         client_id: string;
                         callback: (response: { credential: string }) => void;
+                        hd?: string;
                     }) => void;
                     renderButton: (element: HTMLElement, options: object) => void;
                 };
@@ -41,6 +42,7 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
             window.google.accounts.id.initialize({
                 client_id: clientId,
                 callback: (response) => callbackRef.current(response.credential),
+                hd: process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN,
             });
             containerRef.current.innerHTML = "";
             window.google.accounts.id.renderButton(containerRef.current, {
@@ -73,9 +75,8 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
     }, []);
 
     if (error) {
-        return (
-            <p className="rounded-xl bg-warning-wash px-4 py-3 text-sm text-warning-ink">{error}</p>
-        );
+        alert(error);
+        return;
     }
     return <div ref={containerRef} className="flex min-h-11 justify-center" />;
 }
