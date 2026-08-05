@@ -10,14 +10,12 @@ export interface TokenPayload {
 export interface StationDto {
     name: string;
     arriveAt: string;
-    enabled: boolean;
+    monthlyPrice: number;
 }
 
 export interface RouteDto {
     id: number;
     name: string;
-    departAt: string;
-    enabled: boolean;
     stations: StationDto[];
 }
 
@@ -26,8 +24,9 @@ export interface BookingDto {
     seatNumber: number;
     station: string;
     status: "SUCCESS" | "CANCELLED";
+    isPaid: boolean;
     createdAt: string;
-    route: { id: number; name: string; departAt: string; stations: StationDto[] };
+    route: { id: number; name: string; stations: StationDto[] };
 }
 
 export interface MeResponse {

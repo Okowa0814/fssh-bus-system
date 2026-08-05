@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BadgeIcon } from "@/components/icons";
 import type { BookingDto } from "@/lib/types";
+import { formatPrice } from "@/lib/pricing";
 
 export interface TicketInfoRow {
     k: string;
@@ -67,7 +68,8 @@ export function Ticket({ booking, rows }: { booking: BookingDto | null; rows: Ti
         );
     }
 
-    const arriveAt = booking.route.stations.find((s) => s.name === booking.station)?.arriveAt;
+    const boardingStation = booking.route.stations.find((s) => s.name === booking.station);
+    const arriveAt = boardingStation?.arriveAt;
 
     return (
         <div style={{ perspective: 1800 }}>
@@ -94,34 +96,18 @@ export function Ticket({ booking, rows }: { booking: BookingDto | null; rows: Ti
                                         鳳山高中專車
                                     </span>
                                 </div>
-
-                                {/* Status label */}
-                                <div className="flex items-center gap-1.5 font-mono text-xs tracking-wide text-success uppercase">
-                                    <span className="size-2 rounded-full bg-success" />
-                                    登記有效
-                                </div>
-
+                                
                                 {/* Route name */}
                                 <p className="truncate text-4xl font-bold tracking-tight">
                                     {booking.route.name}
                                 </p>
                                 
-                                {/* Boarding station */}
+                                {/* Boarding station & price */}
                                 <p className="text-lg text-muted">
-                                    {booking.station} 上車
+                                    {booking.station} 上車 · {formatPrice(boardingStation?.monthlyPrice ?? 0)}/月
                                 </p>
 
                                 <div className="flex items-end gap-8">
-                                    {/* Departure time */}
-                                    {booking.route.departAt && (
-                                        <div>
-                                            <p className="text-xs text-muted">發車</p>
-                                            <p className="mt-0.5 font-mono text-3xl font-medium">
-                                                {booking.route.departAt}
-                                            </p>
-                                        </div>
-                                    )}
-
                                     {/* Arrival time */}
                                     {arriveAt && (
                                         <div>

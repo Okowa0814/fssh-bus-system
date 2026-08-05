@@ -4,7 +4,7 @@ import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { parseStations } from "@/server/stations";
 
-/** GET /api/admin/routes — 全部路線（含停用路線與停用站點） */
+/** GET /api/admin/routes — 全部路線 */
 export async function GET(request: Request) {
     const auth = await requireAdmin(request);
     if (isResponse(auth)) {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         return auth;
     }
 
-    let body: { name?: unknown; departAt?: unknown; stations?: unknown };
+    let body: { name?: unknown; stations?: unknown };
     try {
         body = await request.json();
     } catch {
@@ -34,9 +34,6 @@ export async function POST(request: Request) {
 
     if (typeof body.name !== "string" || !body.name.trim()) {
         return fail(400, "路線名稱格式錯誤");
-    }
-    if (body.departAt !== undefined && typeof body.departAt !== "string") {
-        return fail(400, "發車時間格式錯誤");
     }
 
     const stations = body.stations === undefined ? [] : parseStations(body.stations);
@@ -47,7 +44,6 @@ export async function POST(request: Request) {
     const route = await prisma.route.create({
         data: {
             name: body.name.trim().slice(0, 50),
-            departAt: typeof body.departAt === "string" ? body.departAt.trim().slice(0, 20) : "",
             stations: stations as unknown as Prisma.InputJsonValue,
         },
     });

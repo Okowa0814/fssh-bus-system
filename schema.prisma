@@ -22,13 +22,11 @@ model User {
     bookings       Booking[]
 }
 
-// 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, time, enabled }]
+// 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, arriveAt, monthlyPrice }]
 model Route {
     id       Int       @id @default(autoincrement())
     name     String
-    departAt String    @default("") // 顯示用發車時間，例如 "17:10"
     stations Json
-    enabled  Boolean   @default(true)
     bookings Booking[]
 }
 
@@ -41,6 +39,7 @@ model Booking {
     seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
     station    String   @default("") // 學生選擇的上車站點名稱
     status     String   @default("SUCCESS") // SUCCESS / CANCELLED
+    isPaid     Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
     createdAt  DateTime @default(now())
     updatedAt  DateTime @updatedAt
     student    User     @relation(fields: [studentId], references: [studentId])

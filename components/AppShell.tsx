@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-import { BadgeIcon, BusIcon, ClipboardIcon, HelpIcon, HomeIcon, LogoutIcon, MapPinIcon } from "./icons";
+import { BadgeIcon, BusIcon, ClipboardIcon, HelpIcon, HomeIcon, ListIcon, LogoutIcon, MapPinIcon } from "./icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -17,7 +17,8 @@ const studentLinks: { href: string; label: string; icon: Icon }[] = [
 ];
 
 const adminLinks: { href: string; label: string; icon: Icon }[] = [
-    { href: "/admin", label: "登記總覽", icon: ClipboardIcon },
+    { href: "/admin", label: "登記概況", icon: ClipboardIcon },
+    { href: "/admin/bookings", label: "登記總覽", icon: ListIcon },
     { href: "/admin/routes", label: "路線管理", icon: BusIcon },
 ];
 
@@ -26,7 +27,8 @@ const titleMap: Record<string, string> = {
     "/booking": "登記座位",
     "/routes": "路線總覽",
     "/help": "使用說明",
-    "/admin": "管理後台",
+    "/admin": "登記概況",
+    "/admin/bookings": "登記總覽",
     "/admin/routes": "路線管理",
 };
 
@@ -53,6 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const links = user.isAdmin ? adminLinks : studentLinks;
     const title = titleMap[pathname] ?? "專車登記";
+    const isWide = pathname === "/admin/bookings";
 
     return (
         <div className="flex min-h-dvh flex-col md:flex-row">
@@ -111,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 
                 {/* Main Content */}
                 <main className="flex-1 px-4.5 pb-24 pt-5 md:px-11 md:pb-15 md:pt-9">
-                    <div className="mx-auto w-full max-w-5xl">{children}</div>
+                    <div className={`mx-auto w-full ${isWide ? "max-w-7xl" : "max-w-5xl"}`}>{children}</div>
                 </main>
 
                 {/* Mobile Footer Navigation */}

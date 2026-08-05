@@ -99,6 +99,46 @@ export function LogoutIcon(props: IconProps) {
     );
 }
 
+export function TrashIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="M4 7h16" />
+            <path d="M9 7V4h6v3" />
+            <path d="M6 7l1 13h10l1-13" />
+            <path d="M10 11v6M14 11v6" />
+        </svg>
+    );
+}
+
+export function PlusIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="M12 5v14M5 12h14" />
+        </svg>
+    );
+}
+
+export function SaveIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="M5 4h11l3 3v13H5z" />
+            <path d="M8 4v5h7V4" />
+            <path d="M8 21v-6h8v6" />
+        </svg>
+    );
+}
+
+export function ListIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="M9 6h11M9 12h11M9 18h11" />
+            <circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none" />
+            <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
+            <circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+
 export function RefreshIcon(props: IconProps) {
     return (
         <svg {...base(props)}>

@@ -15,6 +15,7 @@ import type {
 import { SeatMap, Stepper, Ticket } from "@/components";
 import { api, ApiError } from "@/services/api";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { formatPrice } from "@/lib/pricing";
 
 const STEPS = ["選路線", "選站點", "選座位", "完成"];
 
@@ -239,12 +240,6 @@ export default function BookingPage() {
                                             <div className="flex items-start justify-between gap-3.5">
 
                                                 <p className="text-xl font-bold tracking-tight">{item.name}</p>
-
-                                                {item.departAt && (
-                                                    <span className="rounded-full px-2.5 py-1 font-mono text-muted">
-                                                        {item.departAt} 發車
-                                                    </span>
-                                                )}
                                             </div>
                                         </button>
                                     ))}
@@ -261,31 +256,36 @@ export default function BookingPage() {
                                 </h2>
                                 <p className="text-muted">
                                     {route.name}
-                                    {route.departAt && ` · ${route.departAt} 發車`}
                                 </p>
 
                                 {/* No stations available */ }
-                                {route.stations.filter((s) => s.enabled).length === 0 && (
+                                {route.stations.length === 0 && (
                                     <p className="py-10 text-center text-xl text-muted">這條路線目前沒有開放的站點。</p>
                                 )}
 
                                 {/* Stations list */ }
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    {route.stations
-                                        .filter((s) => s.enabled)
-                                        .map((s) => (
-                                            <button
-                                                key={s.name}
-                                                type="button"
-                                                onClick={() => chooseStation(s.name)}
-                                                className={`flex items-center justify-between gap-3.5 rounded-card border bg-surface p-5 text-left shadow-card transition ${
-                                                    selectedStation === s.name ? "border-accent" : "border-line"
-                                                }`}
-                                            >
+                                    {route.stations.map((s) => (
+                                        <button
+                                            key={s.name}
+                                            type="button"
+                                            onClick={() => chooseStation(s.name)}
+                                            className={`flex items-center justify-between gap-3.5 rounded-card border bg-surface p-5 text-left shadow-card transition ${
+                                                selectedStation === s.name ? "border-accent" : "border-line"
+                                            }`}
+                                        >
+                                            <div className="flex flex-col gap-1">
+                                                {/* Station label */}
                                                 <p className="text-xl font-medium">{s.name}</p>
-                                                <span className="font-mono text-muted">{s.arriveAt}</span>
-                                            </button>
-                                        ))}
+
+                                                {/* Price label */}
+                                                <span className="font-mono text-lg text-accent-ink">
+                                                    {formatPrice(s.monthlyPrice)}/月
+                                                </span>
+                                            </div>
+                                            <span className="font-mono text-muted">{s.arriveAt}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -297,7 +297,6 @@ export default function BookingPage() {
                                 <h2 className="text-[clamp(24px,3.2vw,32px)] font-bold tracking-tight">挑一個位子</h2>
                                 <p className="text-muted">
                                     {route.name} · {selectedStation}
-                                    {route.departAt && ` · ${route.departAt} 發車`}
                                 </p>
 
                                 {/* SeatMap */ }
@@ -322,13 +321,12 @@ export default function BookingPage() {
                                     <>  
                                         {/* Success message */ }
                                         <div className="flex flex-col items-center gap-2 text-center">
-                                            <span className="grid size-11 place-items-center rounded-full bg-accent-wash text-[20px] text-accent">
+                                            <span className="grid size-11 place-items-center rounded-full bg-accent-wash text-2xl text-accent">
                                                 ✓
                                             </span>
                                             <h2 className="text-[clamp(21px,3.4vw,28px)] font-bold tracking-tight">
                                                 位子留給你了
-                                            </h2>
-                                            <p className="text-sm text-muted">上車前把這張票打開給隨車老師看就好。</p>
+                                            </h2>             
                                         </div>
 
                                         <Ticket booking={result.booking} rows={rows} />
@@ -344,7 +342,7 @@ export default function BookingPage() {
                                 ) : (
                                     // Booking fail
                                     <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                                        <span className="grid size-13 place-items-center rounded-full bg-danger-wash text-[20px] text-danger-ink">
+                                        <span className="grid size-13 place-items-center rounded-full bg-danger-wash text-2xl text-danger-ink">
                                             ✕
                                         </span>
                                         <h2 className="text-[19px] font-bold tracking-tight">登記失敗</h2>

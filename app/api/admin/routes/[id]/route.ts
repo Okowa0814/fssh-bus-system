@@ -4,7 +4,7 @@ import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { parseStations } from "@/server/stations";
 
-/** PATCH /api/admin/routes/:id — 路線管理（站點切換、路線啟用/停用、名稱） */
+/** PATCH /api/admin/routes/:id — 路線管理（站點切換、名稱） */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
     const auth = await requireAdmin(request);
     if (isResponse(auth)) {
@@ -17,7 +17,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return fail(400, "路線代碼格式錯誤");
     }
 
-    let body: { name?: unknown; departAt?: unknown; enabled?: unknown; stations?: unknown };
+    let body: { name?: unknown; stations?: unknown };
     try {
         body = await request.json();
     } catch {
@@ -26,8 +26,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const data: {
         name?: string;
-        departAt?: string;
-        enabled?: boolean;
         stations?: Prisma.InputJsonValue;
     } = {};
     if (body.name !== undefined) {
@@ -35,18 +33,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
             return fail(400, "路線名稱格式錯誤");
         }
         data.name = body.name.trim().slice(0, 50);
-    }
-    if (body.departAt !== undefined) {
-        if (typeof body.departAt !== "string") {
-            return fail(400, "發車時間格式錯誤");
-        }
-        data.departAt = body.departAt.trim().slice(0, 20);
-    }
-    if (body.enabled !== undefined) {
-        if (typeof body.enabled !== "boolean") {
-            return fail(400, "enabled 需為布林值");
-        }
-        data.enabled = body.enabled;
     }
     if (body.stations !== undefined) {
         const stations = parseStations(body.stations);
@@ -66,6 +52,26 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
     const route = await prisma.route.update({ where: { id: routeId }, data });
     return ok(route);
+}
+
+/**
+ * 判斷是否為「路線仍有登記紀錄」造成的刪除失敗。
+ * Prisma 7 搭配 @prisma/adapter-pg 時，Postgres 的 RESTRICT 外鍵違反（23001，非一般的 23503）
+ * 沒有對應的內建錯誤碼，會包成通用的 P2039，原始 pg 錯誤碼藏在 meta.driverAdapterError.cause.code。
+ */
+function isRouteInUseError(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+        return false;
+    }
+    if (error.code === "P2003") {
+        return true;
+    }
+    const driverError = error.meta?.driverAdapterError;
+    const cause =
+        driverError && typeof driverError === "object" && "cause" in driverError
+            ? (driverError as { cause?: { code?: unknown } }).cause
+            : undefined;
+    return cause?.code === "23001" || cause?.code === "23503";
 }
 
 /** DELETE /api/admin/routes/:id — 刪除路線 */
@@ -89,7 +95,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     try {
         await prisma.route.delete({ where: { id: routeId } });
     } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        if (isRouteInUseError(error)) {
             return fail(409, "此路線仍有登記紀錄，請先處理相關登記後再刪除");
         }
         throw error;

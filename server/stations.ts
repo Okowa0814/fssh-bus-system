@@ -12,7 +12,9 @@ export function parseStations(input: unknown): StationDto[] | null {
             item === null ||
             typeof (item as StationDto).name !== "string" ||
             typeof (item as StationDto).arriveAt !== "string" ||
-            typeof (item as StationDto).enabled !== "boolean"
+            typeof (item as StationDto).monthlyPrice !== "number" ||
+            !Number.isFinite((item as StationDto).monthlyPrice) ||
+            (item as StationDto).monthlyPrice < 0
         ) {
             return null;
         }
@@ -20,7 +22,7 @@ export function parseStations(input: unknown): StationDto[] | null {
         stations.push({
             name: station.name.trim().slice(0, 50),
             arriveAt: station.arriveAt.trim().slice(0, 20),
-            enabled: station.enabled,
+            monthlyPrice: Math.round(station.monthlyPrice),
         });
     }
     return stations;

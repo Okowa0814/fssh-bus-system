@@ -7,7 +7,7 @@ import { StatusChip } from "@/components";
 
 function toLocalInput(iso: string | null): string {
     if (!iso) return "";
-    
+
     const date = new Date(iso);
     const pad = (value: number) => String(value).padStart(2, "0");
 
@@ -16,14 +16,12 @@ function toLocalInput(iso: string | null): string {
 
 export default function AdminPage() {
     const [bookings, setBookings] = useState<AdminBookingDto[]>([]);
+    
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [start, setStart] = useState("");
     const [end, setEnd] = useState("");
-    const [saving, setSaving] = useState(false);
 
-    const [routeFilter, setRouteFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState("SUCCESS");
-    const [keyword, setKeyword] = useState("");
+    const [saving, setSaving] = useState(false);
 
     // Init data
     useEffect(() => {
@@ -37,41 +35,23 @@ export default function AdminPage() {
             .catch(() => {});
     }, []);
 
+    // Success count
+    const successCount = bookings.filter((booking) => booking.status === "SUCCESS").length;
+
+    // Each router count
     const routeNames = useMemo(
         () => [...new Set(bookings.map((booking) => booking.route.name))],
         [bookings],
     );
-
-    const filtered = useMemo(
-        () =>
-            bookings.filter((booking) => {
-                if (routeFilter !== "all" && booking.route.name !== routeFilter) {
-                    return false;
-                }
-                if (statusFilter !== "all" && booking.status !== statusFilter) {
-                    return false;
-                }
-                const query = keyword.trim();
-                if (
-                    query &&
-                    !booking.student.studentId.includes(query) &&
-                    !booking.student.name.includes(query)
-                ) {
-                    return false;
-                }
-                return true;
-            }),
-        [bookings, routeFilter, statusFilter, keyword],
-    );
-
-    const successCount = bookings.filter((booking) => booking.status === "SUCCESS").length;
 
     const saveWindow = async () => {
         if (!start || !end) {
             alert("請填寫完整的開始與結束時間");
             return;
         }
+
         setSaving(true);
+        
         try {
             const updated = await api<BookingWindowDto>("/api/admin/booking-window", {
                 method: "PUT",
@@ -108,10 +88,10 @@ export default function AdminPage() {
             {/* Statistics */}
             <section className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
                 {kpis.map((stat) => (
-                    <div key={stat.label} className="flex flex-col gap-2 rounded-field border border-line bg-surface p-4.5">
-                        <p className="text-muted">{stat.label}</p>
+                    <div key={stat.label} className="rounded-card bg-surface p-6 shadow-card">
+                        <p className="text-muted text-lg">{stat.label}</p>
                         <p className="flex items-baseline gap-1.5">
-                            <span className="font-mono text-[26px] font-medium tracking-tight">{stat.value}</span>
+                            <span className="font-mono text-[32px] font-medium tracking-tight">{stat.value}</span>
                             <span className="font-mono text-xs text-muted">{stat.unit}</span>
                         </p>
                     </div>
@@ -120,26 +100,31 @@ export default function AdminPage() {
 
             {/* Open Time */}
             <section className="rounded-card bg-surface p-6 shadow-card">
-                <h2 className="font-semibold text-muted">登記開放時間</h2>
+                <h2 className="font-semibold text-muted text-xl">登記開放時間</h2>
                 <div className="mt-4 flex flex-wrap items-end gap-3">
-                    <label className="text-xs font-medium text-muted">
+                    {/* Start */}
+                    <label className="font-medium text-muted">
                         開始
                         <input
                             type="datetime-local"
                             value={start}
                             onChange={(event) => setStart(event.target.value)}
-                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-sm text-fg outline-none focus:border-accent"
+                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-fg outline-none focus:border-accent"
                         />
                     </label>
-                    <label className="text-xs font-medium text-muted">
+
+                    {/* End */}
+                    <label className="font-medium text-muted">
                         結束
                         <input
                             type="datetime-local"
                             value={end}
                             onChange={(event) => setEnd(event.target.value)}
-                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-sm text-fg outline-none focus:border-accent"
+                            className="mt-1.5 block rounded-field border border-line bg-surface2 px-3.5 py-2.5 font-mono text-fg outline-none focus:border-accent"
                         />
                     </label>
+
+                    {/* Save */}
                     <button
                         type="button"
                         onClick={saveWindow}
@@ -148,97 +133,6 @@ export default function AdminPage() {
                     >
                         {saving ? "儲存中…" : "儲存"}
                     </button>
-                </div>
-            </section>
-
-            {/* List */}
-            <section className="rounded-card bg-surface p-6 shadow-card">
-                <div className="flex flex-wrap items-center gap-2.5">
-                    {/* Keyword Search Input */}
-                    <input
-                        type="search"
-                        placeholder="搜尋學號或姓名…"
-                        value={keyword}
-                        onChange={(event) => setKeyword(event.target.value)}
-                        className="w-56 rounded-field border border-line bg-surface2 px-3.5 py-2.5 text-sm outline-none focus:border-accent"
-                    />
-
-                    {/* Route Filter Dropdown */}
-                    <select
-                        value={routeFilter}
-                        onChange={(event) => setRouteFilter(event.target.value)}
-                        className="rounded-field border border-line bg-surface2 px-3.5 py-2.5 outline-none focus:border-accent"
-                    >
-                        <option value="all">全部路線</option>
-                        {routeNames.map((name) => (
-                            <option key={name} value={name}>
-                                {name}
-                            </option>
-                        ))}
-                    </select>
-                    
-                    {/* Status Filter Dropdown */}
-                    <select
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                        className="rounded-field border border-line bg-surface2 px-3.5 py-2.5 outline-none focus:border-accent"
-                    >
-                        <option value="all">全部狀態</option>
-                        <option value="SUCCESS">登記成功</option>
-                        <option value="CANCELLED">已取消</option>
-                    </select>
-
-                    <span className="ml-auto font-bold font-mono text-muted">共 {filtered.length} 筆</span>
-                </div>
-                    
-                {/* Table */}
-                <div className="mt-4 overflow-x-auto">
-                    <table className="w-full min-w-[640px] text-left text-sm">
-
-                        <thead>
-                            <tr className="border-b border-line text-xl tracking-wide text-muted uppercase">
-                                <th className="py-3 pr-4 font-medium">學號</th>
-                                <th className="py-3 pr-4 font-medium">姓名</th>
-                                <th className="py-3 pr-4 font-medium">路線</th>
-                                <th className="py-3 pr-4 font-medium">站點</th>
-                                <th className="py-3 pr-4 font-medium">座位</th>
-                                <th className="py-3 pr-4 font-medium">狀態</th>
-                                <th className="py-3 font-medium">登記時間</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {/* No Records Found Message */}
-                            {filtered.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="py-10 text-center text-muted">
-                                        沒有符合條件的登記紀錄。
-                                    </td>
-                                </tr>
-                            )}
-
-                            {filtered.map((booking, i) => (
-                                <tr
-                                    key={booking.id}
-                                    className={`text-lg border-b border-line last:border-0 ${i % 2 ? "bg-[#f1f1ee]" : ""}`}
-                                >
-                                    <td className="py-3 pr-4 font-mono font-medium">
-                                        {booking.student.studentId}
-                                    </td>
-                                    <td className="py-3 pr-4">{booking.student.name}</td>
-                                    <td className="py-3 pr-4 text-muted">{booking.route.name}</td>
-                                    <td className="py-3 pr-4 text-muted">{booking.station}</td>
-                                    <td className="py-3 pr-4 font-mono font-medium">{booking.seatNumber}</td>
-                                    <td className="py-3 pr-4">
-                                        <StatusChip status={booking.status} />
-                                    </td>
-                                    <td className="py-3 font-mono text-muted">
-                                        {new Date(booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
                 </div>
             </section>
         </div>

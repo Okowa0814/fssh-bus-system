@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/services/api";
 import type { RouteDto } from "@/lib/types";
+import { formatPrice } from "@/lib/pricing";
 
 const SWIPE_THRESHOLD = 50;
 
@@ -31,6 +32,7 @@ export function RoutesView() {
     const [direction, setDirection] = useState<"left" | "right">("right");
     const touchStartX = useRef<number | null>(null);
 
+    // Init
     useEffect(() => {
         api<RouteDto[]>("/api/public/routes")
             .then(setRoutes)
@@ -79,7 +81,6 @@ export function RoutesView() {
                         <p className="text-[clamp(32px,3vw,48px)] font-bold tracking-tight">{route.name}</p>
 
                         <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-muted">
-                            {route.departAt && <span className="font-mono">{route.departAt} 發車</span>}
                             <span>{route.stations.length} 個停靠站</span>
                         </div>
 
@@ -157,11 +158,19 @@ export function RoutesView() {
                                             <div
                                                 className={`flex flex-1 items-center justify-between gap-3 ${last ? "pb-0" : "pb-6"}`}
                                             >
-                                                <p
-                                                    className={`mr-8 font-mono text-lg md:text-xl ${edge ? "font-medium" : "text-muted"}`}
-                                                >
-                                                    {station.name}
-                                                </p>
+                                                <div className="mr-8 flex flex-col gap-1">
+                                                    {/* Station label */}
+                                                    <p
+                                                        className={`font-mono text-lg md:text-xl ${edge ? "font-medium" : "text-muted"}`}
+                                                    >
+                                                        {station.name}
+                                                    </p>
+
+                                                    {/* Price label */}
+                                                    <span className="font-mono text-lg text-accent-ink">
+                                                        {formatPrice(station.monthlyPrice)}/月
+                                                    </span>
+                                                </div>
                                                 <p className="font-mono text-lg">{station.arriveAt}</p>
                                             </div>
                                         </div>

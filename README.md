@@ -109,7 +109,7 @@ fssh-bus/
 | 資料表 | 說明 |
 |---|---|
 | `User` | 使用者，以學號 `studentId` 為主鍵，Google 登入時自動 Upsert |
-| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, time, enabled }]` |
+| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]` |
 | `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一，取消時保留列並改狀態為 `CANCELLED` |
 | `Setting` | Key-Value 系統設定，用於存放 `bookingStart` / `bookingEnd` 登記開放時間 |
 

@@ -63,13 +63,13 @@ export async function POST(request: Request) {
         // ── 第二道防線：資料庫交易內雙重檢查 ──
         const booking = await prisma.$transaction(async (tx) => {
             const route = await tx.route.findUnique({ where: { id: routeId } });
-            if (!route || !route.enabled) {
-                throw new ApiFailure(404, "查無此路線或路線已停開");
+            if (!route) {
+                throw new ApiFailure(404, "查無此路線");
             }
 
             const stations = route.stations as unknown as StationDto[];
-            if (!stations.some((s) => s.enabled && s.name === station)) {
-                throw new ApiFailure(400, "查無此站點或站點已停用");
+            if (!stations.some((s) => s.name === station)) {
+                throw new ApiFailure(400, "查無此站點");
             }
 
             const mine = await tx.booking.findFirst({
@@ -119,6 +119,6 @@ export async function POST(request: Request) {
 
 const bookingInclude = {
     route: {
-        select: { id: true, name: true, departAt: true, stations: true },
+        select: { id: true, name: true, stations: true },
     },
 } satisfies Prisma.BookingInclude;
