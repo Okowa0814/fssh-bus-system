@@ -150,10 +150,7 @@ export default function AdminBookingsPage() {
                             )}
 
                             {filtered.map((booking, i) => {
-                                const station = booking.route.stations.find(
-                                    (s) => s.name === booking.station,
-                                );
-                                const amount = annualPrice(station?.monthlyPrice ?? 0);
+                                const amount = annualPrice(booking.monthlyPrice);
 
                                 return (
                                     <tr

@@ -1,9 +1,8 @@
 import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
-import { acquireLock, releaseLock } from "@/server/lock";
+import { acquireLock, releaseLock, routeLockKey } from "@/server/lock";
 import { cancelBookingAndPromote } from "@/server/booking";
-import { waitlistLockKey } from "@/server/waitlist";
 
 const LOCK_TTL_MS = 5000;
 
@@ -25,7 +24,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         return fail(404, "Not Found");
     }
 
-    const lockKey = waitlistLockKey(booking.routeId);
+    const lockKey = routeLockKey(booking.routeId);
     const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
     if (!lockToken) {
         return fail(423, "座位操作中，請稍後再試");

@@ -34,24 +34,28 @@ model Route {
 }
 
 // 登記紀錄表：同一路線的同一個座位，全資料庫只能有一筆紀錄（終極防線）
-// 取消 = 直接刪除該列，重新登記時直接 INSERT，唯一約束由 Redis 鎖＋交易雙重檢查＋DB 唯一約束三道防線共同保證
+// 一人一筆有效登記由 @@unique([studentId]) 在 DB 層強制，Redis 學生鎖＋交易內檢查是前兩道防線
+// 取消 = 直接刪除該列，重新登記時直接 INSERT
 model Booking {
-  id         Int      @id @default(autoincrement())
-  studentId  String
-  routeId    Int
-  seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
-  station    String   @default("") // 學生選擇的上車站點名稱
-  isPaid     Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  student    User     @relation(fields: [studentId], references: [studentId])
-  route      Route    @relation(fields: [routeId], references: [id])
+  id           Int      @id @default(autoincrement())
+  studentId    String
+  routeId      Int
+  seatNumber   Int      // 1 ~ 42（對應遊覽車座位圖）
+  station      String   @default("") // 學生選擇的上車站點名稱
+  monthlyPrice Int      @default(0) // 登記當下該站點的月金額快照，避免管理員事後改價/改站影響既有訂位紀錄
+  arriveAt     String   @default("") // 登記當下該站點的到站時間快照
+  isPaid       Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  student      User     @relation(fields: [studentId], references: [studentId])
+  route        Route    @relation(fields: [routeId], references: [id])
 
   @@unique([routeId, seatNumber])
-  @@index([studentId])
+  @@unique([studentId])
 }
 
 // 候補名單：路線滿位後才開放登記，最多 10 人，座位釋出時最舊的一筆自動遞補
+// 一人一筆候補由 @@unique([studentId]) 在 DB 層強制
 model WaitlistEntry {
   id        Int      @id @default(autoincrement())
   studentId String
@@ -61,8 +65,8 @@ model WaitlistEntry {
   student   User     @relation(fields: [studentId], references: [studentId])
   route     Route    @relation(fields: [routeId], references: [id])
 
+  @@unique([studentId])
   @@index([routeId, createdAt])
-  @@index([studentId])
 }
 
 // 系統設定（key-value）：bookingStart / bookingEnd 控制登記開放時間

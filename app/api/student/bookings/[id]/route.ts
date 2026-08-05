@@ -2,9 +2,8 @@ import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { getBookingWindow } from "@/server/settings";
-import { acquireLock, releaseLock } from "@/server/lock";
+import { acquireLock, releaseLock, routeLockKey } from "@/server/lock";
 import { cancelBookingAndPromote } from "@/server/booking";
-import { waitlistLockKey } from "@/server/waitlist";
 
 const LOCK_TTL_MS = 5000;
 
@@ -32,7 +31,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     }
 
     // 用路線層級的候補鎖序列化取消/遞補，避免兩筆同時取消時搶到同一位候補者
-    const lockKey = waitlistLockKey(booking.routeId);
+    const lockKey = routeLockKey(booking.routeId);
     const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
     if (!lockToken) {
         return fail(423, "座位操作中，請稍後再試");

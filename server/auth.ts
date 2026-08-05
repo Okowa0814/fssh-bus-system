@@ -1,6 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { fail } from "./http";
+import { prisma } from "./db";
 import type { NextResponse } from "next/server";
 
 export interface AuthUser {
@@ -73,10 +74,21 @@ export async function requireStudent(request: Request): Promise<AuthUser | NextR
     return user;
 }
 
-/** 需要管理員：依規格「權限不符直接返回 404」，不洩漏管理端點的存在 */
+/**
+ * 需要管理員：依規格「權限不符直接返回 404」，不洩漏管理端點的存在。
+ * JWT 的 isAdmin 只反映簽發當下的狀態，30 分鐘效期內不會自動更新；
+ * 這裡額外即時查一次 DB，管理員被收回權限或帳號被停用後，舊 token 立刻失效。
+ */
 export async function requireAdmin(request: Request): Promise<AuthUser | NextResponse> {
     const user = await getAuthUser(request);
     if (!user || !user.isAdmin) {
+        return fail(404, "Not Found");
+    }
+    const dbUser = await prisma.user.findUnique({
+        where: { studentId: user.studentId },
+        select: { isAdmin: true },
+    });
+    if (!dbUser?.isAdmin) {
         return fail(404, "Not Found");
     }
     return user;

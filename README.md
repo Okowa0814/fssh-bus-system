@@ -27,7 +27,7 @@
 - 同一路線同一座位在資料庫層以 `@@unique([routeId, seatNumber])` 強制唯一，就算應用層邏輯有漏洞也不會超賣
 - 劃位前先用 Redis 分散式鎖（`SET NX PX`）搶鎖，避免同一秒大量請求打到資料庫造成 race condition
 - 取消登記直接刪除該筆資料列；路線滿位後座位釋出時，候補名單中最舊的一筆會在同一個交易內自動遞補到該座位（`server/booking.ts` 的 `cancelBookingAndPromote`），並用路線層級的 Redis 鎖序列化候補加入與遞補，避免候補名額超收
-- 路線滿位（`Route.isFull`）是單向旗標，由系統在座位滿 42 位時自動設定，之後一般登記入口永久關閉，只能透過候補遞補填補釋出的座位
+- 路線滿位（`Route.isFull`）由系統在座位滿 42 位時自動設定，一般登記入口即關閉、只能候補；取消登記時若候補名單為空，會自動重設回 `false`，避免空出的座位永久卡死
 
 ---
 
@@ -71,9 +71,10 @@ Next.js（App Router + Route Handlers）
 
 ### 💺 劃位流程
 1. 學生送出「路線 + 站點 + 座位」
-2. `server/lock.ts` 以 `lock:seat:{routeId}:{seatNumber}` 為 key 嘗試 `SET NX PX` 取鎖，同一秒只有一個請求能拿到鎖
-3. 拿到鎖後才查詢 / 寫入 `Booking`，資料庫的 `@@unique([routeId, seatNumber])` 是最終防線
-4. 無論成功或失敗都會釋放鎖（`releaseLock`），鎖也有 TTL 保底自動過期
+2. `server/lock.ts` 依序取兩把 `SET NX PX` 分散式鎖：先 `lock:student:{studentId}`（序列化同一學生的登記／候補寫入，避免併發繞過「一人一位」限制），再 `lock:route:{routeId}`（序列化同一路線的所有登記寫入，確保座位計數／`isFull` 判斷在併發下仍然正確）
+3. 兩把鎖都拿到後才查詢 / 寫入 `Booking`，資料庫的 `@@unique([routeId, seatNumber])` 是最終防線
+4. 無論成功或失敗都會依取得順序的反序釋放鎖（`releaseLock`），鎖也有 TTL 保底自動過期
+5. 取消登記／加入候補／退出候補共用同一把 `lock:route:{routeId}`，與劃位互斥，確保候補遞補不會跟新登記互相踩到
 
 ---
 
@@ -112,9 +113,9 @@ fssh-bus/
 | 資料表 | 說明 |
 |---|---|
 | `User` | 使用者，以學號 `studentId` 為主鍵，Google 登入時自動 Upsert |
-| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]`；`isFull` 為座位滿位後系統自動設定的單向旗標 |
-| `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一，取消即刪除該筆資料 |
-| `WaitlistEntry` | 候補名單，路線滿位後才開放登記，最多 10 人，依 `createdAt` 排序、座位釋出時最舊的一筆自動遞補 |
+| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]`；`isFull` 為座位滿位後系統自動設定的旗標，候補名單清空時會自動重設 |
+| `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一、`studentId` 唯一（一人一位），取消即刪除該筆資料；`monthlyPrice` / `arriveAt` 為登記當下的站點快照，不受之後路線編輯影響 |
+| `WaitlistEntry` | 候補名單，路線滿位後才開放登記，`studentId` 唯一（一人一候補），最多 10 人，依 `createdAt` 排序、座位釋出時最舊的一筆自動遞補 |
 | `Setting` | Key-Value 系統設定，用於存放 `bookingStart` / `bookingEnd` 登記開放時間 |
 
 ---
@@ -168,7 +169,33 @@ npm run dev            # 啟動開發伺服器
 
 流程：`nginx`（含 SSL / rate limit）→ `migrate`（一次性同步 DB schema）→ `nextjs`（production build）→ `db` / `redis`。首次執行同樣會自動建立 `.env`，但**務必手動編輯**填入正式的 `GOOGLE_CLIENT_ID`、`ALLOWED_EMAIL_DOMAIN`、`ADMIN_EMAILS` 等變數後再重新執行部署。
 
-> ⚠️ SSL 憑證簽發 / nginx rate limit 等細節請參考 `nginx.conf` 與 `docker-compose.yml` 中的 `certbot` 服務設定。
+> ⚠️ nginx rate limit 等細節請參考 `nginx.conf`。
+
+#### 🔒 首次簽發 SSL 憑證並啟用 HTTPS
+
+`nginx.conf` 目前只開 80 埠：因為 certbot 的 HTTP-01 驗證方式需要先有一個能回應的 HTTP server，
+443 區塊引用的憑證檔案在簽發前並不存在，若先啟用會導致 nginx 直接啟動失敗。正確順序：
+
+1. 確認網域 DNS 已指向這台主機，且 `docker compose up -d nginx` 已在跑（80 埠可正常回應）。
+2. 首次簽發憑證：
+   ```bash
+   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d bus.fssh.khc.edu.tw
+   ```
+3. 簽發成功後，取消 `nginx.conf` 中 443 `server {}` 區塊的註解，並把 80 區塊的 `location / { proxy_pass ...; }` 換成：
+   ```nginx
+   location / { return 301 https://$host$request_uri; }
+   ```
+4. `docker compose restart nginx` 套用設定。之後 `certbot` 服務會依既有排程自動續期，不需要再手動介入。
+
+#### 💾 資料庫備份與還原
+
+`backup` 服務會每 24 小時對 PostgreSQL 執行一次 `pg_dump`，壓縮後存到 `./data/backups/`，並自動清除 14 天前的舊備份。還原：
+
+```bash
+gunzip -c ./data/backups/<檔名>.sql.gz | docker compose exec -T db psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+```
+
+建議再搭配異地保存（例如排程同步到雲端物件儲存），本機 bind mount 只能防止「表格被誤刪」，無法防止整台主機故障或磁碟損毀。
 
 ---
 
@@ -209,3 +236,17 @@ npm run start        # 啟動正式版伺服器
 npm run lint          # ESLint 檢查
 npm run db:push        # 同步 Prisma Schema 到資料庫
 ```
+
+---
+
+## 🗃️ 關於 `prisma db push`
+
+`Dockerfile` 的 `migrate` stage 目前執行 `prisma db push`：schema 有變動時直接依目前定義覆蓋資料庫結構，
+沒有版本化的遷移紀錄，也無法針對「這欄位怎麼從舊資料轉換過來」寫自訂邏輯，正式環境有資料損壞風險。
+待專案穩定、需要更嚴謹的 schema 變更流程時，建議改用 Prisma Migrate：
+
+1. 本機對照正式環境的資料庫結構，執行一次 `npx prisma migrate dev --name init` 建立第一份 migration（`prisma/migrations/`）。
+2. 把 `Dockerfile` 的 `migrate` stage 的 `CMD` 由 `npx prisma db push` 改成 `npx prisma migrate deploy`。
+3. 之後每次改 `schema.prisma`，都用 `npx prisma migrate dev --name <說明>` 產生新的 migration 並一併提交。
+
+這個切換需要實際連線到資料庫執行指令產生 migration 檔案，本次沒有代為執行。

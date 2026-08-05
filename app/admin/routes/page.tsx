@@ -211,8 +211,10 @@ export default function AdminRoutesPage() {
                 </button>
             </div>
 
+            {/* List */}
             <div ref={trackRef} className="flex gap-4 overflow-x-auto pb-2">               
                 {routes.length === 0 ? (
+                    // No available
                     <p className="w-full rounded-card bg-surface p-10 text-center text-muted shadow-card">
                         還沒有任何路線，點右上角「新增路線」開始建立。
                     </p>
@@ -260,6 +262,7 @@ export default function AdminRoutesPage() {
                         
 
                         <p className="mt-5 text-xs font-semibold text-muted">站點（可拖曳排序）</p>
+
                         <ul className="mt-2.5 flex max-h-[520px] flex-col gap-2 overflow-y-auto pr-1">
                             {route.stations.map((station, index) => (
                                 <li
@@ -311,6 +314,7 @@ export default function AdminRoutesPage() {
                                             onChange={(event) => patchStation(route.id, index, { arriveAt: event.target.value })}
                                             className={`w-24 shrink-0 font-mono  text-muted ${underlineInput}`}
                                         />
+
                                         <div className="flex w-20 shrink-0 items-center gap-0.5">
                                             <span className="text-xs text-muted">$</span>
                                             <input

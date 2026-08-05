@@ -68,8 +68,7 @@ export function Ticket({ booking, rows }: { booking: BookingDto | null; rows: Ti
         );
     }
 
-    const boardingStation = booking.route.stations.find((s) => s.name === booking.station);
-    const arriveAt = boardingStation?.arriveAt;
+    const arriveAt = booking.arriveAt;
 
     return (
         <div style={{ perspective: 1800 }}>
@@ -104,7 +103,7 @@ export function Ticket({ booking, rows }: { booking: BookingDto | null; rows: Ti
                                 
                                 {/* Boarding station & price */}
                                 <p className="text-lg text-muted">
-                                    {booking.station} 上車 · {formatPrice(boardingStation?.monthlyPrice ?? 0)}/月
+                                    {booking.station} 上車 · {formatPrice(booking.monthlyPrice)}/月
                                 </p>
 
                                 <div className="flex items-end gap-8">

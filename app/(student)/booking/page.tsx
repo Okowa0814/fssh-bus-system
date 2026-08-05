@@ -42,7 +42,6 @@ export default function BookingPage() {
         - seatsLoading: 是否正在載入座位資訊
         - submitting: 是否正在提交登記
         - result: 登記結果
-
     */
     const { user } = useCurrentUser();
     const [loading, setLoading] = useState(true);
@@ -58,23 +57,44 @@ export default function BookingPage() {
     const [selectedStation, setSelectedStation] = useState<string | null>(null);
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
     const [seatsLoading, setSeatsLoading] = useState(false);
-
+    const [seatsError, setSeatsError] = useState(false);
+    
     const [submitting, setSubmitting] = useState(false);
     const [result, setResult] = useState<BookingResult | null>(null);
-
+    
+    // Load initial data on component mount
+    useEffect(() => {
+        Promise.all([
+            api<BookingWindowDto>("/api/student/booking-window"),
+            api<MeResponse>("/api/student/me"),
+            api<RouteDto[]>("/api/public/routes"),
+        ])
+            .then(([windowData, meData, routesData]) => {
+                setWindow(windowData);
+                setExisting(meData.booking);
+                setExistingWaitlist(meData.waitlist);
+                setRoutes(routesData);
+                setProfile(meData.user);
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+    
     // Load seats for a given route ID
     const loadSeats = useCallback(async (id: number) => {
         setSeatsLoading(true);
+        setSeatsError(false);
         try {
             const seats = await api<SeatsResponse>(`/api/student/routes/${id}/seats`);
             setTakenSeats(seats.takenSeats);
         } catch {
             setTakenSeats([]);
+            setSeatsError(true);
         } finally {
             setSeatsLoading(false);
         }
     }, []);
-
+    
     const chooseRoute = useCallback(
         (selected: RouteDto) => {
             setRoute(selected);
@@ -86,7 +106,7 @@ export default function BookingPage() {
         },
         [loadSeats],
     );
-
+        
     // Submit a waitlist join for a full route (no seat map — seat is auto-assigned on promotion)
     const submitWaitlist = async (routeId: number, stationName: string) => {
         setSubmitting(true);
@@ -124,37 +144,23 @@ export default function BookingPage() {
         [route],
     );
 
-    // Load initial data on component mount
-    useEffect(() => {
-        Promise.all([
-            api<BookingWindowDto>("/api/student/booking-window"),
-            api<MeResponse>("/api/student/me"),
-            api<RouteDto[]>("/api/public/routes"),
-        ])
-            .then(([windowData, meData, routesData]) => {
-                setWindow(windowData);
-                setExisting(meData.booking);
-                setExistingWaitlist(meData.waitlist);
-                setRoutes(routesData);
-                setProfile(meData.user);
-            })
-            .catch(() => {})
-            .finally(() => setLoading(false));
-    }, []);
-
     // Re-sync route.isFull with the server — the route the student picked earlier in the
-    // wizard may have filled up in the meantime, so a failed submit needs fresh data before retry()
-    // can correctly decide whether to send them back to the seat map or into the waitlist flow.
-    const syncRouteFullness = async (routeId: number) => {
+    // wizard may have filled up in the meantime, so a failed submit needs fresh data to
+    // decide whether to offer the waitlist instead of just failing. Returns the fresh
+    // isFull value (or null if the refresh failed / route disappeared) for the caller.
+    const syncRouteFullness = async (routeId: number): Promise<boolean | null> => {
         try {
             const fresh = await api<RouteDto[]>("/api/public/routes");
             setRoutes(fresh);
             const match = fresh.find((r) => r.id === routeId);
             if (match) {
                 setRoute((previous) => (previous ? { ...previous, isFull: match.isFull } : previous));
+                return match.isFull;
             }
+            return null;
         } catch {
             // 刷新失敗不影響主流程，retry() 頂多用舊資料再試一次
+            return null;
         }
     };
 
@@ -163,7 +169,6 @@ export default function BookingPage() {
         if (route === null || selectedStation === null) {
             return;
         }
-
         setSubmitting(true);
 
         try {
@@ -173,9 +178,17 @@ export default function BookingPage() {
             });
             setResult({ ok: true, kind: "booking", booking });
         } catch (error) {
+            const stillFull = await syncRouteFullness(route.id);
+            if (stillFull) {
+                const reason = error instanceof ApiError ? error.message : "此路線座位已滿";
+                const confirmed = window.confirm(`${reason}，是否改為加入候補名單（${selectedStation}）？`);
+                if (confirmed) {
+                    await submitWaitlist(route.id, selectedStation);
+                    return;
+                }
+            }
             alert(error instanceof ApiError ? error.message : "登記失敗，請稍後再試");
             setResult({ ok: false });
-            await syncRouteFullness(route.id);
         } finally {
             setSubmitting(false);
             setStep(3);
@@ -411,6 +424,17 @@ export default function BookingPage() {
                                 {/* SeatMap */ }
                                 {seatsLoading ? (
                                     <p className="py-10 text-center text-xl text-muted">座位載入中…</p>
+                                ) : seatsError ? (
+                                    <div className="flex flex-col items-center gap-3 py-10 text-center">
+                                        <p className="text-xl text-muted">座位載入失敗，請稍後再試。</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => void loadSeats(route.id)}
+                                            className="rounded-field border border-line px-5 py-2.5 text-sm font-medium text-muted"
+                                        >
+                                            重新載入
+                                        </button>
+                                    </div>
                                 ) : (
                                     <SeatMap
                                         takenSeats={takenSeats}

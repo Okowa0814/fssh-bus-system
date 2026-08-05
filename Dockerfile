@@ -11,7 +11,7 @@ RUN npm install
 # Dev Environment
 FROM deps AS dev
 ENV NODE_ENV=development
-EXPOSE 1135
+EXPOSE 3000
 CMD ["sh", "-c", "npx prisma db push && npm run dev"]
 
 # Build Environment
@@ -34,12 +34,12 @@ CMD ["npx", "prisma", "db", "push"]
 # Production Environment
 FROM base AS runner
 ENV NODE_ENV=production
-ENV PORT=1135
+ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-USER nextjs 
-EXPOSE 1135
+USER nextjs
+EXPOSE 3000
 CMD ["node", "server.js"]

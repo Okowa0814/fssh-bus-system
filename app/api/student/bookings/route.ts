@@ -2,7 +2,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail, ApiFailure } from "@/server/http";
-import { acquireLock, releaseLock, seatLockKey } from "@/server/lock";
+import { acquireLockResilient, releaseLock, routeLockKey, studentLockKey } from "@/server/lock";
 import { getBookingWindow } from "@/server/settings";
 import { isValidSeat } from "@/lib/seat";
 import { markRouteFullIfNeeded } from "@/server/booking";
@@ -12,7 +12,9 @@ const LOCK_TTL_MS = 5000;
 
 /**
  * POST /api/student/bookings — 自由選位「零失誤」防超賣流程
- * 第一道防線：Redis 分散式鎖（同座位僅放行第 1 個請求，其餘回 423）
+ * 第一道防線：Redis 分散式鎖，由外而內依序取得——
+ *   學生鎖（序列化同一學生的登記／候補寫入，避免併發請求繞過「一人一位」限制）
+ *   → 路線鎖（序列化同一路線的所有登記寫入，確保座位計數／isFull 判斷在併發下仍然正確）
  * 第二道防線：PostgreSQL 交易內雙重檢查
  * 第三道防線：@@unique([routeId, seatNumber]) 唯一約束
  */
@@ -41,26 +43,34 @@ export async function POST(request: Request) {
         return fail(403, "目前不在登記時間");
     }
 
-    // ── 第一道防線：Redis 記憶體鎖 ──
-    // Redis 連線短暫抖動時重試一次，避免單次瞬斷就讓使用者看到系統忙碌
-    const lockKey = seatLockKey(routeId, seatNumber);
-    let lockToken: string | null;
-    try {
-        lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
-    } catch {
-        try {
-            await new Promise((resolve) => setTimeout(resolve, 80));
-            lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
-        } catch (error) {
-            console.error("取得座位鎖失敗:", error);
-            return fail(503, "系統忙碌中，請稍後再試");
-        }
-    }
-    if (!lockToken) {
-        return fail(423, "座位選取中／已被選取，請改選其他座位");
-    }
+    // ── 第一道防線：Redis 分散式鎖 ──
+    const studentLock = studentLockKey(auth.studentId);
+    const routeLock = routeLockKey(routeId);
+
+    let studentToken: string | null = null;
+    let routeToken: string | null = null;
 
     try {
+        try {
+            studentToken = await acquireLockResilient(studentLock, LOCK_TTL_MS);
+        } catch (error) {
+            console.error("取得學生鎖失敗:", error);
+            return fail(503, "系統忙碌中，請稍後再試");
+        }
+        if (!studentToken) {
+            return fail(423, "你有其他登記或候補要求正在處理中，請稍後再試");
+        }
+
+        try {
+            routeToken = await acquireLockResilient(routeLock, LOCK_TTL_MS);
+        } catch (error) {
+            console.error("取得路線鎖失敗:", error);
+            return fail(503, "系統忙碌中，請稍後再試");
+        }
+        if (!routeToken) {
+            return fail(423, "座位操作中，請稍後再試");
+        }
+
         // ── 第二道防線：資料庫交易內雙重檢查 ──
         const booking = await prisma.$transaction(async (tx) => {
             const route = await tx.route.findUnique({ where: { id: routeId } });
@@ -69,7 +79,8 @@ export async function POST(request: Request) {
             }
 
             const stations = route.stations as unknown as StationDto[];
-            if (!stations.some((s) => s.name === station)) {
+            const boardingStation = stations.find((s) => s.name === station);
+            if (!boardingStation) {
                 throw new ApiFailure(400, "查無此站點");
             }
 
@@ -99,7 +110,14 @@ export async function POST(request: Request) {
             }
 
             const created = await tx.booking.create({
-                data: { studentId: auth.studentId, routeId, seatNumber, station },
+                data: {
+                    studentId: auth.studentId,
+                    routeId,
+                    seatNumber,
+                    station,
+                    monthlyPrice: boardingStation.monthlyPrice,
+                    arriveAt: boardingStation.arriveAt,
+                },
                 include: bookingInclude,
             });
             await markRouteFullIfNeeded(tx, routeId);
@@ -113,13 +131,22 @@ export async function POST(request: Request) {
         }
         // ── 第三道防線：唯一約束衝突（理論上不會發生，發生也絕不超賣） ──
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            const target = Array.isArray(error.meta?.target) ? error.meta.target.join(",") : "";
+            if (target.includes("studentId")) {
+                return fail(409, "你已登記過座位，請先於身份頁取消原登記");
+            }
             return fail(409, "此座位剛被其他同學登記，請改選其他座位");
         }
         console.error("劃位失敗:", error);
         return fail(500, "劃位失敗，請稍後再試");
     } finally {
-        // ── 解鎖釋放：無論成功或失敗都釋放座位操作權 ──
-        await releaseLock(lockKey, lockToken);
+        // ── 解鎖釋放：無論成功或失敗都要釋放，且順序與取得時相反 ──
+        if (routeToken) {
+            await releaseLock(routeLock, routeToken);
+        }
+        if (studentToken) {
+            await releaseLock(studentLock, studentToken);
+        }
     }
 }
 

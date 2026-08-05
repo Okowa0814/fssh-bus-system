@@ -24,6 +24,8 @@ export interface BookingDto {
     id: number;
     seatNumber: number;
     station: string;
+    monthlyPrice: number;
+    arriveAt: string;
     isPaid: boolean;
     createdAt: string;
     route: { id: number; name: string; stations: StationDto[] };

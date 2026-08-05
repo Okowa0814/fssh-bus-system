@@ -95,6 +95,32 @@ services:
         networks:
             - busnet
 
+    # 每日排程備份：pg_dump 壓縮後存到 ./data/backups，保留最近 14 天，還原方式見 README
+    backup:
+        image: postgres:18-alpine
+        container_name: fssh-bus-backup
+        restart: unless-stopped
+        environment:
+            PGHOST: db
+            PGUSER: ${POSTGRES_USER}
+            PGPASSWORD: ${POSTGRES_PASSWORD}
+            PGDATABASE: ${POSTGRES_DB}
+        volumes:
+            - ./data/backups:/backups
+        entrypoint: >
+            /bin/sh -c '
+            trap exit TERM;
+            while :; do
+                pg_dump | gzip > "/backups/$$(date +%Y%m%d_%H%M%S).sql.gz";
+                find /backups -name "*.sql.gz" -mtime +14 -delete;
+                sleep 24h & wait $${!};
+            done'
+        depends_on:
+            db:
+                condition: service_healthy
+        networks:
+            - busnet
+
 networks:
     busnet:
         driver: bridge

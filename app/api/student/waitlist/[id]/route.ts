@@ -1,8 +1,7 @@
 import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
-import { acquireLock, releaseLock } from "@/server/lock";
-import { waitlistLockKey } from "@/server/waitlist";
+import { acquireLock, releaseLock, routeLockKey } from "@/server/lock";
 
 const LOCK_TTL_MS = 5000;
 
@@ -25,7 +24,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     }
 
     // 與座位遞補共用同一路線的鎖，避免退出候補的當下正好被遞補
-    const lockKey = waitlistLockKey(entry.routeId);
+    const lockKey = routeLockKey(entry.routeId);
     const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
     if (!lockToken) {
         return fail(423, "候補名單操作中，請稍後再試");
