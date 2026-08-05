@@ -17,15 +17,22 @@ export interface RouteDto {
     id: number;
     name: string;
     stations: StationDto[];
+    isFull: boolean;
 }
 
 export interface BookingDto {
     id: number;
     seatNumber: number;
     station: string;
-    status: "SUCCESS" | "CANCELLED";
     isPaid: boolean;
     createdAt: string;
+    route: { id: number; name: string; stations: StationDto[] };
+}
+
+export interface WaitlistEntryDto {
+    id: number;
+    station: string;
+    position: number;
     route: { id: number; name: string; stations: StationDto[] };
 }
 
@@ -38,6 +45,7 @@ export interface MeResponse {
         isAdmin: boolean;
     };
     booking: BookingDto | null;
+    waitlist: WaitlistEntryDto | null;
 }
 
 export interface BookingWindowDto {
@@ -59,6 +67,15 @@ export interface AdminBookingDto extends BookingDto {
         enrollmentYear: string;
         email: string;
     };
+}
+
+export interface AdminUserDto {
+    studentId: string;
+    name: string;
+    email: string;
+    enrollmentYear: string;
+    isAdmin: boolean;
+    createdAt: string;
 }
 
 export interface LoginResponse {

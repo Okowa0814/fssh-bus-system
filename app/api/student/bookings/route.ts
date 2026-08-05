@@ -5,6 +5,7 @@ import { ok, fail, ApiFailure } from "@/server/http";
 import { acquireLock, releaseLock, seatLockKey } from "@/server/lock";
 import { getBookingWindow } from "@/server/settings";
 import { isValidSeat } from "@/lib/seat";
+import { markRouteFullIfNeeded } from "@/server/booking";
 import type { StationDto } from "@/lib/types";
 
 const LOCK_TTL_MS = 5000;
@@ -72,32 +73,37 @@ export async function POST(request: Request) {
                 throw new ApiFailure(400, "查無此站點");
             }
 
+            if (route.isFull) {
+                throw new ApiFailure(409, "此路線座位已滿，請改用候補登記");
+            }
+
             const mine = await tx.booking.findFirst({
-                where: { studentId: auth.studentId, status: "SUCCESS" },
+                where: { studentId: auth.studentId },
             });
             if (mine) {
                 throw new ApiFailure(409, "你已登記過座位，請先於身份頁取消原登記");
             }
 
+            const waitlisted = await tx.waitlistEntry.findFirst({
+                where: { studentId: auth.studentId },
+            });
+            if (waitlisted) {
+                throw new ApiFailure(409, "你已在候補名單中，請先取消候補後再登記");
+            }
+
             const existing = await tx.booking.findUnique({
                 where: { routeId_seatNumber: { routeId, seatNumber } },
             });
-            if (existing?.status === "SUCCESS") {
+            if (existing) {
                 throw new ApiFailure(409, "此座位剛被其他同學登記，請改選其他座位");
             }
 
-            // 取消過的座位保留原列直接更新，唯一約束（第三道防線）恆成立
-            if (existing) {
-                return tx.booking.update({
-                    where: { id: existing.id },
-                    data: { studentId: auth.studentId, station, status: "SUCCESS" },
-                    include: bookingInclude,
-                });
-            }
-            return tx.booking.create({
+            const created = await tx.booking.create({
                 data: { studentId: auth.studentId, routeId, seatNumber, station },
                 include: bookingInclude,
             });
+            await markRouteFullIfNeeded(tx, routeId);
+            return created;
         });
 
         return ok(booking, 201);

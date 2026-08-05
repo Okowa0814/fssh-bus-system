@@ -13,6 +13,7 @@ export async function GET() {
             id: route.id,
             name: route.name,
             stations: route.stations as unknown as StationDto[],
+            isFull: route.isFull,
         })),
     );
 }

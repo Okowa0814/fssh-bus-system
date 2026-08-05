@@ -4,7 +4,7 @@ import { RefreshIcon } from "@/components/icons";
 import { BUS_LAYOUT, type SeatCell } from "@/lib/seat";
 
 function cellClass(taken: boolean): string {
-    if (taken) return "cursor-not-allowed bg-accent text-ink shadow-md";
+    if (taken) return "cursor-not-allowed bg-accent/20 text-ink shadow-md";
 
     return "border border-line text-fg hover:border-accent hover:bg-accent-wash";
 }

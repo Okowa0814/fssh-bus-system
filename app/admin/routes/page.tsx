@@ -13,6 +13,7 @@ interface AdminRoute {
     id: number;
     name: string;
     stations: EditableStation[];
+    isFull: boolean;
 }
 
 const underlineInput =
@@ -53,12 +54,13 @@ export default function AdminRoutesPage() {
     const trackRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        api<{ id: number; name: string; stations: StationDto[] }[]>("/api/admin/routes")
+        api<{ id: number; name: string; stations: StationDto[]; isFull: boolean }[]>("/api/admin/routes")
             .then((data) =>
                 setRoutes(
                     data.map((route) => ({
                         id: route.id,
                         name: route.name,
+                        isFull: route.isFull,
                         stations: route.stations.map((station) => ({
                             ...station,
                             key: crypto.randomUUID(),
@@ -158,7 +160,7 @@ export default function AdminRoutesPage() {
 
     const addRoute = async () => {
         try {
-            const created = await api<{ id: number; name: string; stations: StationDto[] }>(
+            const created = await api<{ id: number; name: string; stations: StationDto[]; isFull: boolean }>(
                 "/api/admin/routes",
                 { method: "POST", body: { name: "新路線", stations: [] } },
             );
@@ -167,6 +169,7 @@ export default function AdminRoutesPage() {
                 {
                     id: created.id,
                     name: created.name,
+                    isFull: created.isFull,
                     stations: created.stations.map((station) => ({
                         ...station,
                         key: crypto.randomUUID(),
@@ -221,11 +224,18 @@ export default function AdminRoutesPage() {
                     >
 
                         {/* Route name */}
-                        <input
-                            value={route.name}
-                            onChange={(event) => patchRoute(route.id, { name: event.target.value })}
-                            className={`w-fit text-2xl font-bold ${underlineInput}`}
-                        />
+                        <div className="flex items-center gap-2">
+                            <input
+                                value={route.name}
+                                onChange={(event) => patchRoute(route.id, { name: event.target.value })}
+                                className={`w-fit text-2xl font-bold ${underlineInput}`}
+                            />
+                            {route.isFull && (
+                                <span className="shrink-0 rounded-full bg-warning-wash px-2.5 py-1 text-xs font-medium text-warning-ink">
+                                    已滿
+                                </span>
+                            )}
+                        </div>
 
                         {/* 刪除路線 / 新增站點 / 儲存變更 */}
                         <div className="flex items-start mt-4 gap-1.5 justify-center">

@@ -3,39 +3,27 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/services/api";
 import type { AdminBookingDto } from "@/lib/types";
-import { StatusChip } from "@/components";
+import { ActionMenu } from "@/components";
 import { annualPrice, formatPrice } from "@/lib/pricing";
 
-function PaidChip({
-    paid,
-    pending,
-    onToggle,
-}: {
-    paid: boolean;
-    pending: boolean;
-    onToggle: () => void;
-}) {
+function PaidBadge({ paid }: { paid: boolean }) {
     return (
-        <button
-            type="button"
-            onClick={onToggle}
-            disabled={pending}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${
+        <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
                 paid ? "bg-success-wash text-success-ink" : "bg-warning-wash text-warning-ink"
             }`}
         >
             <span className="size-1.5 rounded-full bg-current" />
             {paid ? "已繳費" : "未繳費"}
-        </button>
+        </span>
     );
 }
 
 export default function AdminBookingsPage() {
     const [bookings, setBookings] = useState<AdminBookingDto[]>([]);
-    const [togglingId, setTogglingId] = useState<number | null>(null);
+    const [pendingId, setPendingId] = useState<number | null>(null);
 
     const [routeFilter, setRouteFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState("SUCCESS");
     const [keyword, setKeyword] = useState("");
 
     useEffect(() => {
@@ -53,9 +41,6 @@ export default function AdminBookingsPage() {
                 if (routeFilter !== "all" && booking.route.name !== routeFilter) {
                     return false;
                 }
-                if (statusFilter !== "all" && booking.status !== statusFilter) {
-                    return false;
-                }
                 const query = keyword.trim();
                 if (
                     query &&
@@ -66,23 +51,42 @@ export default function AdminBookingsPage() {
                 }
                 return true;
             }),
-        [bookings, routeFilter, statusFilter, keyword],
+        [bookings, routeFilter, keyword],
     );
 
-    const togglePaid = async (booking: AdminBookingDto) => {
-        setTogglingId(booking.id);
+    const markPaid = async (booking: AdminBookingDto) => {
+        setPendingId(booking.id);
         try {
             await api(`/api/admin/bookings/${booking.id}`, {
                 method: "PATCH",
-                body: { isPaid: !booking.isPaid },
+                body: { isPaid: true },
             });
             setBookings((previous) =>
-                previous.map((b) => (b.id === booking.id ? { ...b, isPaid: !b.isPaid } : b)),
+                previous.map((b) => (b.id === booking.id ? { ...b, isPaid: true } : b)),
             );
         } catch (error) {
             alert(error instanceof ApiError ? error.message : "更新繳費狀態失敗，請稍後再試");
         } finally {
-            setTogglingId(null);
+            setPendingId(null);
+        }
+    };
+
+    const deleteBooking = async (booking: AdminBookingDto) => {
+        if (
+            !window.confirm(
+                `確定要刪除「${booking.student.name}」（${booking.route.name} / ${booking.seatNumber} 號座）的這筆登記嗎？此動作無法復原。`,
+            )
+        ) {
+            return;
+        }
+        setPendingId(booking.id);
+        try {
+            await api(`/api/admin/bookings/${booking.id}`, { method: "DELETE" });
+            setBookings((previous) => previous.filter((b) => b.id !== booking.id));
+        } catch (error) {
+            alert(error instanceof ApiError ? error.message : "刪除失敗，請稍後再試");
+        } finally {
+            setPendingId(null);
         }
     };
 
@@ -114,16 +118,6 @@ export default function AdminBookingsPage() {
                         ))}
                     </select>
 
-                    <select
-                        value={statusFilter}
-                        onChange={(event) => setStatusFilter(event.target.value)}
-                        className="rounded-field border border-line bg-surface2 px-3.5 py-2.5 outline-none focus:border-accent"
-                    >
-                        <option value="all">全部狀態</option>
-                        <option value="SUCCESS">登記成功</option>
-                        <option value="CANCELLED">已取消</option>
-                    </select>
-
                     <span className="ml-auto font-bold font-mono text-muted">共 {filtered.length} 筆</span>
                 </div>
             </section>
@@ -139,10 +133,10 @@ export default function AdminBookingsPage() {
                                 <th className="py-3 pr-4 font-medium">路線</th>
                                 <th className="py-3 pr-4 font-medium">站點</th>
                                 <th className="py-3 pr-4 font-medium">座位</th>
-                                <th className="py-3 pr-4 font-medium">狀態</th>
                                 <th className="py-3 pr-4 font-medium">應繳金額</th>
-                                <th className="py-3 font-medium">是否繳清</th>
+                                <th className="py-3 pr-4 font-medium">是否繳清</th>
                                 <th className="py-3 pr-4 font-medium">登記時間</th>
+                                <th className="py-3 font-medium" />
                             </tr>
                         </thead>
 
@@ -173,21 +167,31 @@ export default function AdminBookingsPage() {
                                         <td className="py-3 pr-4 text-muted">{booking.route.name}</td>
                                         <td className="py-3 pr-4 text-muted">{booking.station}</td>
                                         <td className="py-3 pr-4 font-mono font-medium">{booking.seatNumber}</td>
-                                        <td className="py-3 pr-4">
-                                            <StatusChip status={booking.status} />
-                                        </td>
                                         <td className="py-3 pr-4 font-mono font-medium">
                                             {formatPrice(amount)}/年
                                         </td>
-                                        <td className="py-3">
-                                            <PaidChip
-                                                paid={booking.isPaid}
-                                                pending={togglingId === booking.id}
-                                                onToggle={() => void togglePaid(booking)}
-                                            />
+                                        <td className="py-3 pr-4">
+                                            <PaidBadge paid={booking.isPaid} />
                                         </td>
                                         <td className="py-3 pr-4 font-mono text-muted">
                                             {new Date(booking.createdAt).toLocaleString("zh-TW", { hour12: false })}
+                                        </td>
+                                        <td className="py-3 text-right">
+                                            <ActionMenu
+                                                items={[
+                                                    {
+                                                        label: "標記已繳清",
+                                                        disabled: booking.isPaid || pendingId === booking.id,
+                                                        onSelect: () => void markPaid(booking),
+                                                    },
+                                                    {
+                                                        label: "刪除這筆資料",
+                                                        danger: true,
+                                                        disabled: pendingId === booking.id,
+                                                        onSelect: () => void deleteBooking(booking),
+                                                    },
+                                                ]}
+                                            />
                                         </td>
                                     </tr>
                                 );

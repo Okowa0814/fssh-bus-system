@@ -2,55 +2,71 @@
 // 三張核心資料表：User / Route / Booking，外加 Setting 存放登記時間等系統設定
 
 generator client {
-    provider = "prisma-client"
-    output   = "./lib/generated/prisma"
+  provider = "prisma-client"
+  output   = "./lib/generated/prisma"
 }
 
 datasource db {
-    provider = "postgresql"
+  provider = "postgresql"
 }
 
 // 使用者表：以學號為主鍵，由 Google 登入時自動 Upsert
 model User {
-    studentId      String    @id
-    name           String
-    email          String    @unique
-    enrollmentYear String
-    isAdmin        Boolean   @default(false) // false: STUDENT / true: ADMIN
-    createdAt      DateTime  @default(now())
-    updatedAt      DateTime  @updatedAt
-    bookings       Booking[]
+  studentId      String          @id
+  name           String
+  email          String          @unique
+  enrollmentYear String
+  isAdmin        Boolean         @default(false) // false: STUDENT / true: ADMIN
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  bookings       Booking[]
+  waitlist       WaitlistEntry[]
 }
 
 // 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, arriveAt, monthlyPrice }]
 model Route {
-    id       Int       @id @default(autoincrement())
-    name     String
-    stations Json
-    bookings Booking[]
+  id       Int             @id @default(autoincrement())
+  name     String
+  stations Json
+  isFull   Boolean         @default(false) // 座位滿位後由系統自動設為 true，單向旗標，永不復原
+  bookings Booking[]
+  waitlist WaitlistEntry[]
 }
 
 // 登記紀錄表：同一路線的同一個座位，全資料庫只能有一筆紀錄（終極防線）
-// 取消時保留該列並改為 CANCELLED，重新登記時直接更新該列，確保唯一約束恆成立
+// 取消 = 直接刪除該列，重新登記時直接 INSERT，唯一約束由 Redis 鎖＋交易雙重檢查＋DB 唯一約束三道防線共同保證
 model Booking {
-    id         Int      @id @default(autoincrement())
-    studentId  String
-    routeId    Int
-    seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
-    station    String   @default("") // 學生選擇的上車站點名稱
-    status     String   @default("SUCCESS") // SUCCESS / CANCELLED
-    isPaid     Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
-    student    User     @relation(fields: [studentId], references: [studentId])
-    route      Route    @relation(fields: [routeId], references: [id])
+  id         Int      @id @default(autoincrement())
+  studentId  String
+  routeId    Int
+  seatNumber Int // 1 ~ 42（對應遊覽車座位圖）
+  station    String   @default("") // 學生選擇的上車站點名稱
+  isPaid     Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  student    User     @relation(fields: [studentId], references: [studentId])
+  route      Route    @relation(fields: [routeId], references: [id])
 
-    @@unique([routeId, seatNumber])
-    @@index([studentId])
+  @@unique([routeId, seatNumber])
+  @@index([studentId])
+}
+
+// 候補名單：路線滿位後才開放登記，最多 10 人，座位釋出時最舊的一筆自動遞補
+model WaitlistEntry {
+  id        Int      @id @default(autoincrement())
+  studentId String
+  routeId   Int
+  station   String // 候補時選擇的上車站點，遞補成功時直接沿用
+  createdAt DateTime @default(now())
+  student   User     @relation(fields: [studentId], references: [studentId])
+  route     Route    @relation(fields: [routeId], references: [id])
+
+  @@index([routeId, createdAt])
+  @@index([studentId])
 }
 
 // 系統設定（key-value）：bookingStart / bookingEnd 控制登記開放時間
 model Setting {
-    key   String @id
-    value String
+  key   String @id
+  value String
 }

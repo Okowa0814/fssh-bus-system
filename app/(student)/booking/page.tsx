@@ -10,6 +10,7 @@ import type {
     MeResponse,
     RouteDto,
     SeatsResponse,
+    WaitlistEntryDto,
 } from "@/lib/types";
 
 import { SeatMap, Stepper, Ticket } from "@/components";
@@ -19,7 +20,10 @@ import { formatPrice } from "@/lib/pricing";
 
 const STEPS = ["選路線", "選站點", "選座位", "完成"];
 
-type BookingResult = { ok: true; booking: BookingDto } | { ok: false };
+type BookingResult =
+    | { ok: true; kind: "booking"; booking: BookingDto }
+    | { ok: true; kind: "waitlist"; entry: WaitlistEntryDto }
+    | { ok: false };
 
 
 export default function BookingPage() {
@@ -45,6 +49,7 @@ export default function BookingPage() {
 
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [existing, setExisting] = useState<BookingDto | null>(null);
+    const [existingWaitlist, setExistingWaitlist] = useState<WaitlistEntryDto | null>(null);
     const [routes, setRoutes] = useState<RouteDto[]>([]);
     const [profile, setProfile] = useState<MeResponse["user"] | null>(null);
 
@@ -75,15 +80,49 @@ export default function BookingPage() {
             setRoute(selected);
             setSelectedStation(null);
             setStep(1);
-            void loadSeats(selected.id);
+            if (!selected.isFull) {
+                void loadSeats(selected.id);
+            }
         },
         [loadSeats],
     );
 
-    const chooseStation = useCallback((stationName: string) => {
-        setSelectedStation(stationName);
-        setStep(2);
-    }, []);
+    // Submit a waitlist join for a full route (no seat map — seat is auto-assigned on promotion)
+    const submitWaitlist = async (routeId: number, stationName: string) => {
+        setSubmitting(true);
+        try {
+            const entry = await api<WaitlistEntryDto>("/api/student/waitlist", {
+                method: "POST",
+                body: { routeId, station: stationName },
+            });
+            setResult({ ok: true, kind: "waitlist", entry });
+        } catch (error) {
+            alert(error instanceof ApiError ? error.message : "候補登記失敗，請稍後再試");
+            setResult({ ok: false });
+        } finally {
+            setSubmitting(false);
+            setStep(3);
+        }
+    };
+
+    const chooseStation = useCallback(
+        (stationName: string) => {
+            if (route?.isFull) {
+                const confirmed = window.confirm(
+                    `「${route.name}」座位已滿，是否加入候補名單（${stationName}）？`,
+                );
+                if (!confirmed) {
+                    return;
+                }
+                setSelectedStation(stationName);
+                void submitWaitlist(route.id, stationName);
+                return;
+            }
+            setSelectedStation(stationName);
+            setStep(2);
+        },
+        [route],
+    );
 
     // Load initial data on component mount
     useEffect(() => {
@@ -95,12 +134,29 @@ export default function BookingPage() {
             .then(([windowData, meData, routesData]) => {
                 setWindow(windowData);
                 setExisting(meData.booking);
+                setExistingWaitlist(meData.waitlist);
                 setRoutes(routesData);
                 setProfile(meData.user);
             })
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
+
+    // Re-sync route.isFull with the server — the route the student picked earlier in the
+    // wizard may have filled up in the meantime, so a failed submit needs fresh data before retry()
+    // can correctly decide whether to send them back to the seat map or into the waitlist flow.
+    const syncRouteFullness = async (routeId: number) => {
+        try {
+            const fresh = await api<RouteDto[]>("/api/public/routes");
+            setRoutes(fresh);
+            const match = fresh.find((r) => r.id === routeId);
+            if (match) {
+                setRoute((previous) => (previous ? { ...previous, isFull: match.isFull } : previous));
+            }
+        } catch {
+            // 刷新失敗不影響主流程，retry() 頂多用舊資料再試一次
+        }
+    };
 
     // Submit the booking with the selected route, station, and seat
     const submit = async (seatNumber: number) => {
@@ -115,10 +171,11 @@ export default function BookingPage() {
                 method: "POST",
                 body: { routeId: route.id, station: selectedStation, seatNumber },
             });
-            setResult({ ok: true, booking });
+            setResult({ ok: true, kind: "booking", booking });
         } catch (error) {
             alert(error instanceof ApiError ? error.message : "登記失敗，請稍後再試");
             setResult({ ok: false });
+            await syncRouteFullness(route.id);
         } finally {
             setSubmitting(false);
             setStep(3);
@@ -142,9 +199,29 @@ export default function BookingPage() {
         void submit(seatNumber);
     };
 
+    // Cancel the current waitlist entry
+    const cancelWaitlist = async () => {
+        if (!existingWaitlist) {
+            return;
+        }
+        if (!window.confirm("確定要取消候補嗎？")) {
+            return;
+        }
+        try {
+            await api(`/api/student/waitlist/${existingWaitlist.id}`, { method: "DELETE" });
+            setExistingWaitlist(null);
+        } catch (error) {
+            alert(error instanceof ApiError ? error.message : "取消候補失敗，請稍後再試");
+        }
+    };
+
     // Retry booking by resetting the result and step, and reloading seats if a route is selected
     const retry = () => {
         setResult(null);
+        if (route?.isFull) {
+            setStep(1);
+            return;
+        }
         setStep(2);
         if (route !== null) {
             void loadSeats(route.id);
@@ -208,6 +285,33 @@ export default function BookingPage() {
                             回首頁
                         </Link>
                     </div>
+                ) : existingWaitlist ? (
+                    // Currently on a waitlist
+                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
+                        <span className="grid size-13 place-items-center rounded-full bg-warning-wash text-warning-ink">
+                            <BusIcon className="size-8" />
+                        </span>
+
+                        <h2 className="text-[19px] font-bold tracking-tight">候補中</h2>
+
+                        <p className="text-sm text-muted">
+                            {existingWaitlist.route.name}・{existingWaitlist.station}
+                        </p>
+
+                        <p className="text-sm font-medium text-accent-ink">
+                            目前候補第 {existingWaitlist.position} 位
+                        </p>
+
+                        <p className="text-xs text-muted">有座位釋出時會依候補順序自動遞補。</p>
+
+                        <button
+                            type="button"
+                            onClick={() => void cancelWaitlist()}
+                            className="mt-2 rounded-field border border-line px-5 py-2.5 text-sm font-medium text-muted"
+                        >
+                            取消候補
+                        </button>
+                    </div>
                 ) : (
                     // Booking steps
                     <div className="flex flex-col gap-6">
@@ -238,8 +342,12 @@ export default function BookingPage() {
                                             `}
                                         >
                                             <div className="flex items-start justify-between gap-3.5">
-
                                                 <p className="text-xl font-bold tracking-tight">{item.name}</p>
+                                                {item.isFull && (
+                                                    <span className="rounded-full bg-warning-wash px-2.5 py-1 text-xs font-medium text-warning-ink">
+                                                        已滿・候補中
+                                                    </span>
+                                                )}
                                             </div>
                                         </button>
                                     ))}
@@ -256,6 +364,7 @@ export default function BookingPage() {
                                 </h2>
                                 <p className="text-muted">
                                     {route.name}
+                                    {route.isFull && "（此路線已滿位，選站後將加入候補名單）"}
                                 </p>
 
                                 {/* No stations available */ }
@@ -316,9 +425,9 @@ export default function BookingPage() {
                         {/* Step 3: Result */}
                         {step === 3 && result && (
                             <div className="flex flex-col items-center gap-5 py-2">
-                                {result.ok ? (
+                                {result.ok && result.kind === "booking" ? (
                                     // Booking success
-                                    <>  
+                                    <>
                                         {/* Success message */ }
                                         <div className="flex flex-col items-center gap-2 text-center">
                                             <span className="grid size-11 place-items-center rounded-full bg-accent-wash text-2xl text-accent">
@@ -326,7 +435,7 @@ export default function BookingPage() {
                                             </span>
                                             <h2 className="text-[clamp(21px,3.4vw,28px)] font-bold tracking-tight">
                                                 位子留給你了
-                                            </h2>             
+                                            </h2>
                                         </div>
 
                                         <Ticket booking={result.booking} rows={rows} />
@@ -339,6 +448,26 @@ export default function BookingPage() {
                                             回首頁看車票
                                         </Link>
                                     </>
+                                ) : result.ok && result.kind === "waitlist" ? (
+                                    // Waitlist join success
+                                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
+                                        <span className="grid size-13 place-items-center rounded-full bg-warning-wash text-2xl text-warning-ink">
+                                            ✓
+                                        </span>
+                                        <h2 className="text-[19px] font-bold tracking-tight">已加入候補名單</h2>
+                                        <p className="text-sm text-muted">
+                                            {result.entry.route.name}・{result.entry.station}
+                                        </p>
+                                        <p className="text-sm font-medium text-accent-ink">
+                                            目前候補第 {result.entry.position} 位
+                                        </p>
+                                        <Link
+                                            href="/"
+                                            className="mt-2 rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
+                                        >
+                                            回首頁
+                                        </Link>
+                                    </div>
                                 ) : (
                                     // Booking fail
                                     <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">

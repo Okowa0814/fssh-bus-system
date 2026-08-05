@@ -22,7 +22,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
 
     const taken = await prisma.booking.findMany({
-        where: { routeId, status: "SUCCESS" },
+        where: { routeId },
         select: { seatNumber: true },
     });
 

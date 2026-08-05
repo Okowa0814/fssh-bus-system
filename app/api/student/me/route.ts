@@ -24,11 +24,33 @@ export async function GET(request: Request) {
     }
 
     const booking = await prisma.booking.findFirst({
-        where: { studentId: auth.studentId, status: "SUCCESS" },
+        where: { studentId: auth.studentId },
         include: {
             route: { select: { id: true, name: true, stations: true } },
         },
     });
 
-    return ok({ user, booking });
+    const waitlistEntry = booking
+        ? null
+        : await prisma.waitlistEntry.findFirst({
+              where: { studentId: auth.studentId },
+              include: {
+                  route: { select: { id: true, name: true, stations: true } },
+              },
+          });
+
+    let waitlist = null;
+    if (waitlistEntry) {
+        const position = await prisma.waitlistEntry.count({
+            where: { routeId: waitlistEntry.routeId, createdAt: { lt: waitlistEntry.createdAt } },
+        });
+        waitlist = {
+            id: waitlistEntry.id,
+            station: waitlistEntry.station,
+            position: position + 1,
+            route: waitlistEntry.route,
+        };
+    }
+
+    return ok({ user, booking, waitlist });
 }

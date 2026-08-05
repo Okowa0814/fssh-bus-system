@@ -12,19 +12,22 @@
 - 選路線 → 選站點 → 選座位 → 完成，四步驟登記流程（`Stepper`）
 - 視覺化座位圖（`SeatMap`），即時顯示已被登記的座位
 - 登記成功後產生電子車票（`Ticket`），可隨時查看 / 取消登記
+- 路線滿位後自動轉為候補登記（免選座位，最多 10 人），可查看候補排名或自行取消候補
 - 查看所有路線與停靠站資訊、發車時間
 - 使用說明頁面（Help Guide）
 
 ### 🛠️ 管理端
-- 檢視所有登記紀錄，支援依路線 / 狀態 / 關鍵字篩選
+- 檢視所有登記紀錄，支援依路線 / 關鍵字篩選；每筆登記可透過「⋮」選單標記已繳清或刪除
+- 使用者管理：檢視所有使用者、修改姓名
 - 設定登記開放的起訖時間
-- 路線管理：新增 / 編輯 / 啟用停用路線與停靠站
+- 路線管理：新增 / 編輯 / 啟用停用路線與停靠站，滿位路線會顯示「已滿」標籤
 - 權限隔離：管理員帳號無法使用學生端登記功能，反之學生也無法碰管理端 API（未授權存取一律回傳 404，不洩漏端點是否存在）
 
 ### 🔒 核心防搶票機制
 - 同一路線同一座位在資料庫層以 `@@unique([routeId, seatNumber])` 強制唯一，就算應用層邏輯有漏洞也不會超賣
 - 劃位前先用 Redis 分散式鎖（`SET NX PX`）搶鎖，避免同一秒大量請求打到資料庫造成 race condition
-- 取消登記不刪除資料列，只是把狀態改成 `CANCELLED`，重新登記時直接更新同一列，確保唯一約束恆成立
+- 取消登記直接刪除該筆資料列；路線滿位後座位釋出時，候補名單中最舊的一筆會在同一個交易內自動遞補到該座位（`server/booking.ts` 的 `cancelBookingAndPromote`），並用路線層級的 Redis 鎖序列化候補加入與遞補，避免候補名額超收
+- 路線滿位（`Route.isFull`）是單向旗標，由系統在座位滿 42 位時自動設定，之後一般登記入口永久關閉，只能透過候補遞補填補釋出的座位
 
 ---
 
@@ -109,8 +112,9 @@ fssh-bus/
 | 資料表 | 說明 |
 |---|---|
 | `User` | 使用者，以學號 `studentId` 為主鍵，Google 登入時自動 Upsert |
-| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]` |
-| `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一，取消時保留列並改狀態為 `CANCELLED` |
+| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]`；`isFull` 為座位滿位後系統自動設定的單向旗標 |
+| `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一，取消即刪除該筆資料 |
+| `WaitlistEntry` | 候補名單，路線滿位後才開放登記，最多 10 人，依 `createdAt` 排序、座位釋出時最舊的一筆自動遞補 |
 | `Setting` | Key-Value 系統設定，用於存放 `bookingStart` / `bookingEnd` 登記開放時間 |
 
 ---
@@ -174,18 +178,23 @@ npm run dev            # 啟動開發伺服器
 |---|---|
 | `POST /api/auth/google` | Google 登入，驗證網域並簽發 JWT |
 | `POST /api/auth/dev-login` | 開發用測試登入（略過 Google 驗證） |
-| `GET /api/public/routes` | 公開查詢所有路線（免登入） |
+| `GET /api/public/routes` | 公開查詢所有路線（免登入），含 `isFull` 滿位狀態 |
 | `GET /api/public/stats` | 公開統計資訊（路線數、剩餘座位等） |
-| `GET /api/student/me` | 取得目前登入學生資料 |
+| `GET /api/student/me` | 取得目前登入學生資料、有效登記與候補紀錄 |
 | `GET /api/student/booking-window` | 查詢登記開放時間 |
-| `GET/POST /api/student/bookings` | 查詢 / 建立我的登記 |
-| `GET/DELETE /api/student/bookings/[id]` | 查詢 / 取消單筆登記 |
+| `POST /api/student/bookings` | 建立我的登記（路線已滿位時會被拒絕，需改走候補） |
+| `DELETE /api/student/bookings/[id]` | 取消單筆登記（若路線已滿位，候補第一位會自動遞補） |
 | `GET /api/student/routes/[id]/seats` | 查詢某路線座位配置狀態 |
-| `GET/POST /api/admin/bookings` | 管理員查詢 / 操作登記紀錄 |
-| `GET/PATCH/DELETE /api/admin/bookings/[id]` | 管理員操作單筆登記 |
+| `POST /api/student/waitlist` | 加入候補名單（路線需已滿位，最多 10 人） |
+| `DELETE /api/student/waitlist/[id]` | 自行取消候補 |
+| `GET /api/admin/bookings` | 管理員查詢所有登記紀錄 |
+| `PATCH/DELETE /api/admin/bookings/[id]` | 管理員標記繳費 / 刪除單筆登記（刪除時同樣觸發候補遞補） |
 | `GET/POST /api/admin/routes` | 管理員查詢 / 新增路線 |
-| `GET/PATCH/DELETE /api/admin/routes/[id]` | 管理員編輯 / 刪除路線 |
+| `PATCH/DELETE /api/admin/routes/[id]` | 管理員編輯 / 刪除路線 |
 | `GET/PUT /api/admin/booking-window` | 管理員查詢 / 設定登記開放時間 |
+| `GET /api/admin/user` | 管理員查詢所有使用者 |
+| `PATCH /api/admin/user/[id]` | 管理員修改使用者姓名 |
+| `GET /api/admin/waitlist` | 管理員查詢候補名單總覽 |
 
 > 🔒 所有 `/api/admin/**` 端點對非管理員一律回傳 `404`，`/api/student/**` 端點對管理員帳號回傳 `403`。
 

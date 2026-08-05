@@ -1,8 +1,13 @@
 import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
+import { acquireLock, releaseLock } from "@/server/lock";
+import { cancelBookingAndPromote } from "@/server/booking";
+import { waitlistLockKey } from "@/server/waitlist";
 
-/** DELETE /api/admin/bookings/:id — 管理員取消任一學生的登記，不受登記時間限制 */
+const LOCK_TTL_MS = 5000;
+
+/** DELETE /api/admin/bookings/:id — 管理員刪除任一學生的登記，不受登記時間限制 */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
     const auth = await requireAdmin(request);
     if (isResponse(auth)) {
@@ -19,16 +24,19 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     if (!booking) {
         return fail(404, "Not Found");
     }
-    if (booking.status !== "SUCCESS") {
-        return fail(409, "此筆登記已是取消狀態");
+
+    const lockKey = waitlistLockKey(booking.routeId);
+    const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
+    if (!lockToken) {
+        return fail(423, "座位操作中，請稍後再試");
     }
 
-    const updated = await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: "CANCELLED" },
-    });
-
-    return ok({ id: updated.id, status: updated.status });
+    try {
+        await prisma.$transaction((tx) => cancelBookingAndPromote(tx, booking));
+        return ok({ id: booking.id });
+    } finally {
+        await releaseLock(lockKey, lockToken);
+    }
 }
 
 /** PATCH /api/admin/bookings/:id — 管理員切換該筆登記的繳費狀態 */

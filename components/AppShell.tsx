@@ -5,7 +5,17 @@ import { usePathname } from "next/navigation";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { useCurrentUser } from "@/hooks/useAuth";
-import { BadgeIcon, BusIcon, ClipboardIcon, HelpIcon, HomeIcon, ListIcon, LogoutIcon, MapPinIcon } from "./icons";
+import {
+    BadgeIcon,
+    BusIcon,
+    ClipboardIcon,
+    HelpIcon,
+    HomeIcon,
+    ListIcon,
+    LogoutIcon,
+    MapPinIcon,
+    UserIcon,
+} from "./icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -20,6 +30,7 @@ const adminLinks: { href: string; label: string; icon: Icon }[] = [
     { href: "/admin", label: "登記概況", icon: ClipboardIcon },
     { href: "/admin/bookings", label: "登記總覽", icon: ListIcon },
     { href: "/admin/routes", label: "路線管理", icon: BusIcon },
+    { href: "/admin/user", label: "使用者管理", icon: UserIcon },
 ];
 
 const titleMap: Record<string, string> = {
@@ -30,6 +41,7 @@ const titleMap: Record<string, string> = {
     "/admin": "登記概況",
     "/admin/bookings": "登記總覽",
     "/admin/routes": "路線管理",
+    "/admin/user": "使用者管理",
 };
 
 function Logo({ size }: { size: number }) {

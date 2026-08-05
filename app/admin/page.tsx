@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "@/services/api";
-import type { AdminBookingDto, BookingWindowDto } from "@/lib/types";
+import type { AdminBookingDto, BookingWindowDto, RouteDto } from "@/lib/types";
 import { StatusChip } from "@/components";
 
 function toLocalInput(iso: string | null): string {
@@ -14,9 +14,16 @@ function toLocalInput(iso: string | null): string {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+interface WaitlistEntrySummary {
+    id: number;
+    route: { name: string };
+}
+
 export default function AdminPage() {
     const [bookings, setBookings] = useState<AdminBookingDto[]>([]);
-    
+    const [waitlist, setWaitlist] = useState<WaitlistEntrySummary[]>([]);
+    const [routes, setRoutes] = useState<RouteDto[]>([]);
+
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [start, setStart] = useState("");
     const [end, setEnd] = useState("");
@@ -26,6 +33,8 @@ export default function AdminPage() {
     // Init data
     useEffect(() => {
         api<AdminBookingDto[]>("/api/admin/bookings").then(setBookings).catch(() => {});
+        api<WaitlistEntrySummary[]>("/api/admin/waitlist").then(setWaitlist).catch(() => {});
+        api<RouteDto[]>("/api/admin/routes").then(setRoutes).catch(() => {});
         api<BookingWindowDto>("/api/admin/booking-window")
             .then((data) => {
                 setWindow(data);
@@ -34,9 +43,6 @@ export default function AdminPage() {
             })
             .catch(() => {});
     }, []);
-
-    // Success count
-    const successCount = bookings.filter((booking) => booking.status === "SUCCESS").length;
 
     // Each router count
     const routeNames = useMemo(
@@ -67,13 +73,11 @@ export default function AdminPage() {
     };
 
     const kpis = [
-        { label: "有效登記", value: successCount, unit: "人" },
-        { label: "已取消", value: bookings.length - successCount, unit: "人" },
+        { label: "總登記數", value: bookings.length, unit: "人" },
+        { label: "候補中", value: waitlist.length, unit: "人" },
         ...routeNames.map((name) => ({
-            label: name,
-            value: bookings.filter(
-                (booking) => booking.route.name === name && booking.status === "SUCCESS",
-            ).length,
+            label: name + (routes.find((r) => r.name === name)?.isFull ? "（已滿）" : ""),
+            value: bookings.filter((booking) => booking.route.name === name).length,
             unit: "人",
         })),
     ];

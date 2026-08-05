@@ -139,6 +139,16 @@ export function ListIcon(props: IconProps) {
     );
 }
 
+export function MoreIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+        </svg>
+    );
+}
+
 export function RefreshIcon(props: IconProps) {
     return (
         <svg {...base(props)}>
