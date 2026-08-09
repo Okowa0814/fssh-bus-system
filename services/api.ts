@@ -1,7 +1,6 @@
 // === Frontend API Service ===
 import type { TokenPayload } from "@/lib/types";
 
-// 記得要加強key的安全性
 const TOKEN_KEY = "fssh_bus_token";
 
 export function getToken(): string | null {

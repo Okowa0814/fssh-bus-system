@@ -10,14 +10,18 @@ import { verifyGoogleCredential, parseStudentEmail, isAdminEmail } from "@/serve
 export async function POST(request: Request) {
     let credential: unknown;
 
+    // Check vaild json
     try {
         ({ credential } = await request.json());
     } catch {
         return fail(400, "請求格式錯誤");
     }
 
-    if (typeof credential !== "string" || !credential) return fail(400, "缺少 Google 登入憑證");
-    
+    // Check credential
+    if (typeof credential !== "string" || !credential){
+        return fail(400, "缺少 Google 登入憑證");
+    }
+
     try {
         const profile = await verifyGoogleCredential(credential);
         const admin = isAdminEmail(profile.email);
@@ -68,7 +72,9 @@ export async function POST(request: Request) {
             },
         });
     } catch (error) {
-        if (error instanceof ApiFailure) return fail(error.status, error.message);
+        if (error instanceof ApiFailure){
+            return fail(error.status, error.message);
+        }
         
         console.error("Google 登入失敗:", error);
         return fail(500, "登入失敗，請稍後再試");

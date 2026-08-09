@@ -12,10 +12,12 @@ export interface GoogleProfile {
 // Verify the Google ID Token and return the user's profile 
 export async function verifyGoogleCredential(credential: string): Promise<GoogleProfile> {
     const clientId = process.env.GOOGLE_CLIENT_ID;
+
+    // Check CLIENT_ID
     if (!clientId) {
         throw new Error("缺少 GOOGLE_CLIENT_ID 環境變數");
     }
-
+    
     let payload;
     try {
         const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
