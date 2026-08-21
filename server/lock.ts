@@ -53,10 +53,12 @@ export function routeLockKey(routeId: number): string {
 
 /**
  * 學生層級的鎖：序列化同一學生的登記／候補寫入，是第一道防線。
+ * key 必須同時帶入學年與學號——不同屆但號碼剛好相同的兩個學生是資料庫裡不同的人，
+ * 只用學號當 key 會讓他們錯誤共用同一把鎖。
  * 第二道防線是交易內的 SELECT 檢查，第三道是 Booking/WaitlistEntry 的
- * @@unique([studentId]) DB 約束——若前兩道防線因 Redis 失效或極端併發而失守，
+ * @@unique([enrollmentYear, studentId]) DB 約束——若前兩道防線因 Redis 失效或極端併發而失守，
  * 最終仍會在 DB 層擋下同一學生的第二筆登記／候補（P2002），不會造成一人多位。
  */
-export function studentLockKey(studentId: string): string {
-    return `lock:student:${studentId}`;
+export function studentLockKey(enrollmentYear: string, studentId: string): string {
+    return `lock:student:${enrollmentYear}:${studentId}`;
 }

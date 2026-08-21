@@ -126,7 +126,7 @@ export default function LoginPage() {
                     </div>
 
                     {/* Info Buttons */}
-                    <div className="flex items-center justify-center gap-8">
+                    <div className="flex items-center justify-center gap-8 border-t border-line pt-4">
                         <HelpGuideModal />
                         <RoutesModal />
                     </div>

@@ -21,9 +21,9 @@ export async function GET(request: Request) {
     const email = `s${enrollmentYear}${studentId}@fssh.khc.edu.tw`;
 
     const user = await prisma.user.upsert({
-        where: { studentId },
-        update: { name, email, enrollmentYear, isAdmin: admin },
-        create: { studentId, name, email, enrollmentYear, isAdmin: admin },
+        where: { enrollmentYear_studentId: { enrollmentYear, studentId } },
+        update: { name, email, isAdmin: admin },
+        create: { enrollmentYear, studentId, name, email, isAdmin: admin },
     });
 
     const token = await signToken({

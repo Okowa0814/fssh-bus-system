@@ -10,7 +10,6 @@
         ".next": true,
         ".claude": true,
         "node_modules": true,
-        "scripts": true,
         "data": true,
         "public": true,
 
@@ -32,16 +31,5 @@
 
         ".env": true,
         ".env.example": true,
-
-        
-        "app/(student)": true,
-        "app/admin": true,
-        "app/login": true,
-        "app/globals.css": true,
-        "app/layout.tsx": true,
-        "app/not-found.tsx": true,
-        "components": true,
-        "hooks": true,
-        "services": true,
     }
 }

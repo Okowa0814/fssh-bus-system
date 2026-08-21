@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         return fail(403, "目前不在登記時間");
     }
 
-    const studentLock = studentLockKey(auth.studentId);
+    const studentLock = studentLockKey(auth.enrollmentYear, auth.studentId);
     const routeLock = routeLockKey(routeId);
 
     let studentToken: string | null = null;
@@ -81,14 +81,14 @@ export async function POST(request: Request) {
             }
 
             const mine = await tx.booking.findFirst({
-                where: { studentId: auth.studentId },
+                where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
             });
             if (mine) {
                 throw new ApiFailure(409, "你已登記過座位，請先於身份頁取消原登記");
             }
 
             const waitlisted = await tx.waitlistEntry.findFirst({
-                where: { studentId: auth.studentId },
+                where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
             });
             if (waitlisted) {
                 throw new ApiFailure(409, "你已在候補名單中");
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             }
 
             return tx.waitlistEntry.create({
-                data: { studentId: auth.studentId, routeId, station },
+                data: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId, routeId, station },
                 include: { route: { select: { id: true, name: true, stations: true } } },
             });
         });
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
         if (error instanceof ApiFailure) {
             return fail(error.status, error.message);
         }
-        // ── 第三道防線：@@unique([studentId]) 唯一約束衝突（理論上不會發生） ──
+        // ── 第三道防線：@@unique([enrollmentYear, studentId]) 唯一約束衝突（理論上不會發生） ──
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             return fail(409, "你已在候補名單中");
         }

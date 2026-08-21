@@ -19,7 +19,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     }
 
     const entry = await prisma.waitlistEntry.findUnique({ where: { id: entryId } });
-    if (!entry || entry.studentId !== auth.studentId) {
+    if (
+        !entry ||
+        entry.enrollmentYear !== auth.enrollmentYear ||
+        entry.studentId !== auth.studentId
+    ) {
         return fail(404, "Not Found");
     }
 

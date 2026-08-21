@@ -10,17 +10,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// 使用者表：以學號為主鍵，由 Google 登入時自動 Upsert
+// 使用者表：以「入學年 + 學號」複合主鍵，由 Google 登入時自動 Upsert
+// 單獨的學號流水號可能逐年重編（例如每屆座號都從頭開始），
+// 只用學號當主鍵會讓不同年份、剛好號碼相同的兩個真實學生共用同一筆帳號紀錄。
 model User {
-  studentId      String          @id
+  enrollmentYear String
+  studentId      String
   name           String
   email          String          @unique
-  enrollmentYear String
   isAdmin        Boolean         @default(false) // false: STUDENT / true: ADMIN
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   bookings       Booking[]
   waitlist       WaitlistEntry[]
+
+  @@id([enrollmentYear, studentId])
 }
 
 // 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, arriveAt, monthlyPrice }]
@@ -34,38 +38,40 @@ model Route {
 }
 
 // 登記紀錄表：同一路線的同一個座位，全資料庫只能有一筆紀錄（終極防線）
-// 一人一筆有效登記由 @@unique([studentId]) 在 DB 層強制，Redis 學生鎖＋交易內檢查是前兩道防線
+// 一人一筆有效登記由 @@unique([enrollmentYear, studentId]) 在 DB 層強制，Redis 學生鎖＋交易內檢查是前兩道防線
 // 取消 = 直接刪除該列，重新登記時直接 INSERT
 model Booking {
-  id           Int      @id @default(autoincrement())
-  studentId    String
-  routeId      Int
-  seatNumber   Int      // 1 ~ 42（對應遊覽車座位圖）
-  station      String   @default("") // 學生選擇的上車站點名稱
-  monthlyPrice Int      @default(0) // 登記當下該站點的月金額快照，避免管理員事後改價/改站影響既有訂位紀錄
-  arriveAt     String   @default("") // 登記當下該站點的到站時間快照
-  isPaid       Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  student      User     @relation(fields: [studentId], references: [studentId])
-  route        Route    @relation(fields: [routeId], references: [id])
+  id             Int      @id @default(autoincrement())
+  enrollmentYear String
+  studentId      String
+  routeId        Int
+  seatNumber     Int      // 1 ~ 42（對應遊覽車座位圖）
+  station        String   @default("") // 學生選擇的上車站點名稱
+  monthlyPrice   Int      @default(0) // 登記當下該站點的月金額快照，避免管理員事後改價/改站影響既有訂位紀錄
+  arriveAt       String   @default("") // 登記當下該站點的到站時間快照
+  isPaid         Boolean  @default(false) // 學生是否已繳費（月金額 × 12）
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  student        User     @relation(fields: [enrollmentYear, studentId], references: [enrollmentYear, studentId])
+  route          Route    @relation(fields: [routeId], references: [id])
 
   @@unique([routeId, seatNumber])
-  @@unique([studentId])
+  @@unique([enrollmentYear, studentId])
 }
 
 // 候補名單：路線滿位後才開放登記，最多 10 人，座位釋出時最舊的一筆自動遞補
-// 一人一筆候補由 @@unique([studentId]) 在 DB 層強制
+// 一人一筆候補由 @@unique([enrollmentYear, studentId]) 在 DB 層強制
 model WaitlistEntry {
-  id        Int      @id @default(autoincrement())
-  studentId String
-  routeId   Int
-  station   String // 候補時選擇的上車站點，遞補成功時直接沿用
-  createdAt DateTime @default(now())
-  student   User     @relation(fields: [studentId], references: [studentId])
-  route     Route    @relation(fields: [routeId], references: [id])
+  id             Int      @id @default(autoincrement())
+  enrollmentYear String
+  studentId      String
+  routeId        Int
+  station        String // 候補時選擇的上車站點，遞補成功時直接沿用
+  createdAt      DateTime @default(now())
+  student        User     @relation(fields: [enrollmentYear, studentId], references: [enrollmentYear, studentId])
+  route          Route    @relation(fields: [routeId], references: [id])
 
-  @@unique([studentId])
+  @@unique([enrollmentYear, studentId])
   @@index([routeId, createdAt])
 }
 

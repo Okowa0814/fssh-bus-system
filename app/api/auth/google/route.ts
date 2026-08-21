@@ -37,18 +37,17 @@ export async function POST(request: Request) {
         }
 
         const user = await prisma.user.upsert({
-            where: { studentId },
+            where: { enrollmentYear_studentId: { enrollmentYear, studentId } },
             update: {
                 name: profile.name,
                 email: profile.email,
-                enrollmentYear,
                 isAdmin: admin,
             },
             create: {
+                enrollmentYear,
                 studentId,
                 name: profile.name,
                 email: profile.email,
-                enrollmentYear,
                 isAdmin: admin,
             },
         });

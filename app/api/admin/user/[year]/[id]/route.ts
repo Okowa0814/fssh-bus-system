@@ -2,14 +2,17 @@ import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 
-/** PATCH /api/admin/user/:id — 管理員修改使用者姓名（:id 為學號） */
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+/** PATCH /api/admin/user/:year/:id — 管理員修改使用者姓名（:year 為入學年，:id 為學號） */
+export async function PATCH(
+    request: Request,
+    context: { params: Promise<{ year: string; id: string }> },
+) {
     const auth = await requireAdmin(request);
     if (isResponse(auth)) {
         return auth;
     }
 
-    const { id: studentId } = await context.params;
+    const { year: enrollmentYear, id: studentId } = await context.params;
 
     let body: { name?: unknown };
     try {
@@ -21,13 +24,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return fail(400, "姓名格式錯誤");
     }
 
-    const exists = await prisma.user.findUnique({ where: { studentId } });
+    const where = { enrollmentYear_studentId: { enrollmentYear, studentId } };
+
+    const exists = await prisma.user.findUnique({ where });
     if (!exists) {
         return fail(404, "查無此使用者");
     }
 
     const updated = await prisma.user.update({
-        where: { studentId },
+        where,
         data: { name: body.name.trim().slice(0, 50) },
         select: {
             studentId: true,

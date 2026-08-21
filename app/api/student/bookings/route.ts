@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     // ── 第一道防線：Redis 分散式鎖 ──
-    const studentLock = studentLockKey(auth.studentId);
+    const studentLock = studentLockKey(auth.enrollmentYear, auth.studentId);
     const routeLock = routeLockKey(routeId);
 
     let studentToken: string | null = null;
@@ -89,14 +89,14 @@ export async function POST(request: Request) {
             }
 
             const mine = await tx.booking.findFirst({
-                where: { studentId: auth.studentId },
+                where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
             });
             if (mine) {
                 throw new ApiFailure(409, "你已登記過座位，請先於身份頁取消原登記");
             }
 
             const waitlisted = await tx.waitlistEntry.findFirst({
-                where: { studentId: auth.studentId },
+                where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
             });
             if (waitlisted) {
                 throw new ApiFailure(409, "你已在候補名單中，請先取消候補後再登記");
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
 
             const created = await tx.booking.create({
                 data: {
+                    enrollmentYear: auth.enrollmentYear,
                     studentId: auth.studentId,
                     routeId,
                     seatNumber,
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
         // ── 第三道防線：唯一約束衝突（理論上不會發生，發生也絕不超賣） ──
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             const target = Array.isArray(error.meta?.target) ? error.meta.target.join(",") : "";
-            if (target.includes("studentId")) {
+            if (target.includes("enrollmentYear") && target.includes("studentId")) {
                 return fail(409, "你已登記過座位，請先於身份頁取消原登記");
             }
             return fail(409, "此座位剛被其他同學登記，請改選其他座位");

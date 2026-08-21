@@ -10,7 +10,12 @@ export async function GET(request: Request) {
     }
 
     const user = await prisma.user.findUnique({
-        where: { studentId: auth.studentId },
+        where: {
+            enrollmentYear_studentId: {
+                enrollmentYear: auth.enrollmentYear,
+                studentId: auth.studentId,
+            },
+        },
         select: {
             studentId: true,
             name: true,
@@ -24,7 +29,7 @@ export async function GET(request: Request) {
     }
 
     const booking = await prisma.booking.findFirst({
-        where: { studentId: auth.studentId },
+        where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
         include: {
             route: { select: { id: true, name: true, stations: true } },
         },
@@ -33,7 +38,7 @@ export async function GET(request: Request) {
     const waitlistEntry = booking
         ? null
         : await prisma.waitlistEntry.findFirst({
-              where: { studentId: auth.studentId },
+              where: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId },
               include: {
                   route: { select: { id: true, name: true, stations: true } },
               },

@@ -27,14 +27,21 @@ export default function AdminUserPage() {
         if (!name || name === user.name) {
             return;
         }
-        setPendingId(user.studentId);
+        setPendingId(`${user.enrollmentYear}-${user.studentId}`);
         try {
-            const updated = await api<AdminUserDto>(`/api/admin/user/${user.studentId}`, {
-                method: "PATCH",
-                body: { name },
-            });
+            const updated = await api<AdminUserDto>(
+                `/api/admin/user/${user.enrollmentYear}/${user.studentId}`,
+                {
+                    method: "PATCH",
+                    body: { name },
+                },
+            );
             setUsers((previous) =>
-                previous.map((u) => (u.studentId === user.studentId ? updated : u)),
+                previous.map((u) =>
+                    u.studentId === user.studentId && u.enrollmentYear === user.enrollmentYear
+                        ? updated
+                        : u,
+                ),
             );
         } catch (error) {
             alert(error instanceof ApiError ? error.message : "改名失敗，請稍後再試");
@@ -87,7 +94,7 @@ export default function AdminUserPage() {
 
                             {filtered.map((user, i) => (
                                 <tr
-                                    key={user.studentId}
+                                    key={`${user.enrollmentYear}-${user.studentId}`}
                                     className={`border-b border-line last:border-0 ${i % 2 ? "bg-[#f1f1ee]" : ""}`}
                                 >
                                     <td className="py-3 pr-4 font-mono font-medium">{user.studentId}</td>
@@ -102,7 +109,9 @@ export default function AdminUserPage() {
                                             items={[
                                                 {
                                                     label: "改名",
-                                                    disabled: pendingId === user.studentId,
+                                                    disabled:
+                                                        pendingId ===
+                                                        `${user.enrollmentYear}-${user.studentId}`,
                                                     onSelect: () => void rename(user),
                                                 },
                                             ]}

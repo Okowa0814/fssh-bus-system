@@ -31,7 +31,7 @@ function findStation(stations: unknown, name: string): StationDto | undefined {
  * 候補名單為空時，代表座位已經空出但已無人排隊，把 isFull 重設為 false，
  * 否則一般登記入口會永久誤判「已滿」而卡死這個空位（座位容量損失）。
  *
- * 遞補建立訂位若撞上 @@unique([studentId])（該候補者已經透過其他管道持有訂位，
+ * 遞補建立訂位若撞上 @@unique([enrollmentYear, studentId])（該候補者已經透過其他管道持有訂位，
  * 只會在極端併發下發生），視為這筆候補已失效、移除後改遞補下一位，而不是讓整個取消交易失敗。
  */
 export async function cancelBookingAndPromote(
@@ -59,6 +59,7 @@ export async function cancelBookingAndPromote(
         try {
             await tx.booking.create({
                 data: {
+                    enrollmentYear: next.enrollmentYear,
                     studentId: next.studentId,
                     routeId: booking.routeId,
                     seatNumber: booking.seatNumber,

@@ -85,7 +85,12 @@ export async function requireAdmin(request: Request): Promise<AuthUser | NextRes
         return fail(404, "Not Found");
     }
     const dbUser = await prisma.user.findUnique({
-        where: { studentId: user.studentId },
+        where: {
+            enrollmentYear_studentId: {
+                enrollmentYear: user.enrollmentYear,
+                studentId: user.studentId,
+            },
+        },
         select: { isAdmin: true },
     });
     if (!dbUser?.isAdmin) {
