@@ -142,20 +142,11 @@ clear_test_data() {
         return
     fi
 
-    echo "受影響的路線先記下來，刪除後要重算 isFull..."
-    affected_routes=$(psql_exec -t -A -c "
-        SELECT DISTINCT \"routeId\" FROM \"Booking\" WHERE \"studentId\" LIKE 'TEST%';
-    ")
-
     psql_exec -c "DELETE FROM \"Booking\" WHERE \"studentId\" LIKE 'TEST%';"
     psql_exec -c "DELETE FROM \"WaitlistEntry\" WHERE \"studentId\" LIKE 'TEST%';"
     psql_exec -c "DELETE FROM \"User\" WHERE \"studentId\" LIKE 'TEST%';"
 
-    for route_id in $affected_routes; do
-        sync_is_full "$route_id"
-    done
-
-    echo "已清除所有測試資料。"
+    echo "已清除所有測試資料。（isFull 未自動更新，如需同步請自行執行 sync_is_full）"
     list_routes
 }
 

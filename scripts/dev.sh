@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 開發環境部署腳本
-# 啟動 db + redis + nextjs（dev target：熱重載、掛載原始碼、自動 prisma db push）
+# 啟動 db + nextjs（dev target：熱重載、掛載原始碼、自動 prisma db push）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

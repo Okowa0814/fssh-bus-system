@@ -4,22 +4,11 @@ import { TOTAL_SEATS } from "@/lib/seat";
 import type { StationDto } from "@/lib/types";
 
 /**
- * 座位滿位（等於 TOTAL_SEATS）時把 route.isFull 設為 true。
- *
- * 呼叫端必須在整個交易期間持有 routeLockKey(routeId) 這把 Redis 鎖：
- * 若同路線有其他建立登記的交易同時在跑，這裡的 count() 在 PostgreSQL READ COMMITTED
- * 隔離層級下看不到對方尚未 commit 的 insert，可能兩邊都算出「還沒滿」而都不設定 isFull，
- * 即使資料庫實際上已經 42/42 滿座——因為 isFull 不會自動校正，只能靠取消登記時的
- * cancelBookingAndPromote 或下一次呼叫本函式時重新計算。
+ * 路線是否滿位：一律以即時 count(bookings) >= TOTAL_SEATS 判斷，不再儲存 isFull 旗標。
+ * 這樣就不可能出現「實際 42/42 但旗標還是沒滿」的誤判。
  */
-export async function markRouteFullIfNeeded(
-    tx: Prisma.TransactionClient,
-    routeId: number,
-): Promise<void> {
-    const count = await tx.booking.count({ where: { routeId } });
-    if (count >= TOTAL_SEATS) {
-        await tx.route.update({ where: { id: routeId }, data: { isFull: true } });
-    }
+export function isRouteFull(bookingCount: number): boolean {
+    return bookingCount >= TOTAL_SEATS;
 }
 
 function findStation(stations: unknown, name: string): StationDto | undefined {
@@ -27,12 +16,14 @@ function findStation(stations: unknown, name: string): StationDto | undefined {
 }
 
 /**
- * 刪除一筆登記；若該路線已滿位，讓候補名單最舊的一筆直接遞補到剛釋出的座位。
- * 候補名單為空時，代表座位已經空出但已無人排隊，把 isFull 重設為 false，
- * 否則一般登記入口會永久誤判「已滿」而卡死這個空位（座位容量損失）。
+ * 刪除一筆登記；若候補名單還有人，讓最舊的一筆直接遞補到剛釋出的座位。
+ * 能出現在候補名單代表當時該路線已滿，所以有候補＝有人該遞補，不需要再讀任何滿位旗標。
  *
- * 遞補建立訂位若撞上 @@unique([enrollmentYear, studentId])（該候補者已經透過其他管道持有訂位，
- * 只會在極端併發下發生），視為這筆候補已失效、移除後改遞補下一位，而不是讓整個取消交易失敗。
+ * 呼叫端必須在同一個交易內、於本函式之前呼叫 lockRoute(tx, routeId) 取得路線 advisory 鎖，
+ * 以序列化同路線的取消/遞補與候補退出，避免兩筆同時取消搶到同一位候補者、或退出候補時被重複遞補。
+ *
+ * 遞補建立訂位若撞上 @@unique([enrollmentYear, studentId])（該候補者已透過其他管道持有訂位，僅極端併發下發生），
+ * 視為這筆候補已失效、移除後改遞補下一位，而不是讓整個取消交易失敗。
  */
 export async function cancelBookingAndPromote(
     tx: Prisma.TransactionClient,
@@ -41,7 +32,7 @@ export async function cancelBookingAndPromote(
     await tx.booking.delete({ where: { id: booking.id } });
 
     const route = await tx.route.findUnique({ where: { id: booking.routeId } });
-    if (!route?.isFull) {
+    if (!route) {
         return;
     }
 
@@ -51,7 +42,6 @@ export async function cancelBookingAndPromote(
             orderBy: { createdAt: "asc" },
         });
         if (!next) {
-            await tx.route.update({ where: { id: booking.routeId }, data: { isFull: false } });
             return;
         }
 

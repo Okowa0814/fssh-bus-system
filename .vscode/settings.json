@@ -15,7 +15,6 @@
 
         "Dockerfile": true,
         
-        "next.config.ts": true,
         "next-env.d.ts": true,
         "tsconfig.json": true,
         "tsconfig.tsbuildinfo": true,
@@ -29,7 +28,6 @@
         
         ".gitignore": true,
 
-        ".env": true,
         ".env.example": true,
     }
 }

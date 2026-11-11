@@ -39,8 +39,6 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-            redis:
-                condition: service_healthy
             migrate:
                 condition: service_completed_successfully
         networks:
@@ -74,21 +72,6 @@ services:
             - ./data/postgres:/var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-            interval: 5s
-            timeout: 5s
-            retries: 10
-        networks:
-            - busnet
-
-    redis:
-        image: redis:7-alpine
-        container_name: fssh-bus-redis
-        restart: unless-stopped
-        command: redis-server --appendonly yes
-        volumes:
-            - ./data/redis:/data
-        healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
             interval: 5s
             timeout: 5s
             retries: 10

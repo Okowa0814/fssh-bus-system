@@ -19,21 +19,6 @@ services:
             timeout: 5s
             retries: 10
 
-    redis:
-        image: redis:7-alpine
-        container_name: fssh-bus-redis-dev
-        restart: unless-stopped
-        command: redis-server --appendonly yes
-        ports:
-            - "6379:6379"
-        volumes:
-            - ./data/dev-redis:/data
-        healthcheck:
-            test: ["CMD", "redis-cli", "ping"]
-            interval: 5s
-            timeout: 5s
-            retries: 10
-
     nextjs:
         build:
             context: .
@@ -49,6 +34,4 @@ services:
             - /app/.next
         depends_on:
             db:
-                condition: service_healthy
-            redis:
                 condition: service_healthy

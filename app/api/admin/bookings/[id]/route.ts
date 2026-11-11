@@ -1,10 +1,8 @@
 import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
-import { acquireLock, releaseLock, routeLockKey } from "@/server/lock";
+import { lockRoute } from "@/server/lock";
 import { cancelBookingAndPromote } from "@/server/booking";
-
-const LOCK_TTL_MS = 5000;
 
 /** DELETE /api/admin/bookings/:id — 管理員刪除任一學生的登記，不受登記時間限制 */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -24,18 +22,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         return fail(404, "Not Found");
     }
 
-    const lockKey = routeLockKey(booking.routeId);
-    const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
-    if (!lockToken) {
-        return fail(423, "座位操作中，請稍後再試");
-    }
-
-    try {
-        await prisma.$transaction((tx) => cancelBookingAndPromote(tx, booking));
-        return ok({ id: booking.id });
-    } finally {
-        await releaseLock(lockKey, lockToken);
-    }
+    await prisma.$transaction(async (tx) => {
+        await lockRoute(tx, booking.routeId);
+        await cancelBookingAndPromote(tx, booking);
+    });
+    return ok({ id: booking.id });
 }
 
 /** PATCH /api/admin/bookings/:id — 管理員切換該筆登記的繳費狀態 */

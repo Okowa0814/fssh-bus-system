@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev --webpack",
         "build": "prisma generate && next build",
         "start": "next start",
         "lint": "eslint",
@@ -16,7 +16,6 @@
         "@prisma/client": "^7.9.0",
         "dotenv": "^17.4.2",
         "google-auth-library": "^9.15.1",
-        "ioredis": "^5.4.2",
         "jose": "^5.9.6",
         "next": "16.2.11",
         "pg": "^8.22.0",

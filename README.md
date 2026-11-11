@@ -12,7 +12,7 @@
 - 選路線 → 選站點 → 選座位 → 完成，四步驟登記流程（`Stepper`）
 - 視覺化座位圖（`SeatMap`），即時顯示已被登記的座位
 - 登記成功後產生電子車票（`Ticket`），可隨時查看 / 取消登記
-- 路線滿位後自動轉為候補登記（免選座位，最多 10 人），可查看候補排名或自行取消候補
+- 路線滿位後自動轉為候補登記（免選座位，名額不設上限），可查看候補排名或自行取消候補
 - 查看所有路線與停靠站資訊、發車時間
 - 使用說明頁面（Help Guide）
 
@@ -24,10 +24,10 @@
 - 權限隔離：管理員帳號無法使用學生端登記功能，反之學生也無法碰管理端 API（未授權存取一律回傳 404，不洩漏端點是否存在）
 
 ### 🔒 核心防搶票機制
-- 同一路線同一座位在資料庫層以 `@@unique([routeId, seatNumber])` 強制唯一，就算應用層邏輯有漏洞也不會超賣
-- 劃位前先用 Redis 分散式鎖（`SET NX PX`）搶鎖，避免同一秒大量請求打到資料庫造成 race condition
-- 取消登記直接刪除該筆資料列；路線滿位後座位釋出時，候補名單中最舊的一筆會在同一個交易內自動遞補到該座位（`server/booking.ts` 的 `cancelBookingAndPromote`），並用路線層級的 Redis 鎖序列化候補加入與遞補，避免候補名額超收
-- 路線滿位（`Route.isFull`）由系統在座位滿 42 位時自動設定，一般登記入口即關閉、只能候補；取消登記時若候補名單為空，會自動重設回 `false`，避免空出的座位永久卡死
+- **不超賣由資料庫唯一約束保證，與鎖無關**：同一路線同一座位以 `@@unique([routeId, seatNumber])` 強制唯一、一人一筆有效登記以 `@@unique([studentId])` 強制，就算應用層邏輯有漏洞、就算完全不加鎖，都不可能超賣或一人多位
+- **登記選位 / 加入候補為無鎖並行**：這是尖峰「驚群」路徑，刻意不加鎖讓不同座位的請求並行，尖峰不卡；併發衝突直接由唯一約束仲裁（撞 `P2002` 轉成友善 409），且不會因 blocking 鎖佔住連線池
+- **是否滿位改為即時計算**：以 `count(bookings) >= 42` 判斷，不再儲存旗標，從根本消滅「實際已滿但旗標顯示沒滿」的誤判
+- **取消 / 遞補 / 退出候補以 PostgreSQL advisory 鎖序列化**：取消登記直接刪除該列，若候補名單仍有人，最舊一筆會在同一交易內遞補到剛釋出的座位（`server/booking.ts` 的 `cancelBookingAndPromote`）；這些低頻路徑在交易內以 `pg_advisory_xact_lock(routeId)` 序列化（交易結束自動釋放），避免兩筆同時取消搶同一位候補者、或退出候補時被重複遞補
 
 ---
 
@@ -38,8 +38,8 @@
 | 前端框架 | [Next.js 16](https://nextjs.org/)（App Router）+ React 19 + TypeScript |
 | 樣式 | Tailwind CSS 4 |
 | 後端 | Next.js Route Handlers（`app/api/**/route.ts`） |
-| 資料庫 | PostgreSQL 18 + [Prisma ORM 7](https://www.prisma.io/) |
-| 快取 / 分散式鎖 | Redis 7（ioredis） |
+| 資料庫 | PostgreSQL 18 + [Prisma ORM 7](https://www.prisma.io/)（`@prisma/adapter-pg`，連線池 max 25） |
+| 併發控制 | DB 唯一約束 + PostgreSQL advisory 鎖（`pg_advisory_xact_lock`） |
 | 身份驗證 | Google OAuth 2.0 + JWT（[jose](https://github.com/panva/jose)，30 分鐘過期） |
 | 反向代理 | Nginx（含 rate limit、SSL / certbot 自動續期） |
 | 容器化 | Docker + docker-compose（dev / prod 分離） |
@@ -57,9 +57,8 @@ Nginx（反向代理 + rate limit + SSL）
     ▼
 Next.js（App Router + Route Handlers）
     │
-    ├──▶ PostgreSQL（使用者 / 路線 / 登記紀錄 / 設定）
-    │
-    └──▶ Redis（座位搶鎖 SET NX PX）
+    └──▶ PostgreSQL（使用者 / 路線 / 登記紀錄 / 設定）
+             唯一約束防超賣 + advisory 鎖序列化取消/遞補
 ```
 
 ### 🔑 登入流程
@@ -71,10 +70,10 @@ Next.js（App Router + Route Handlers）
 
 ### 💺 劃位流程
 1. 學生送出「路線 + 站點 + 座位」
-2. `server/lock.ts` 依序取兩把 `SET NX PX` 分散式鎖：先 `lock:student:{studentId}`（序列化同一學生的登記／候補寫入，避免併發繞過「一人一位」限制），再 `lock:route:{routeId}`（序列化同一路線的所有登記寫入，確保座位計數／`isFull` 判斷在併發下仍然正確）
-3. 兩把鎖都拿到後才查詢 / 寫入 `Booking`，資料庫的 `@@unique([routeId, seatNumber])` 是最終防線
-4. 無論成功或失敗都會依取得順序的反序釋放鎖（`releaseLock`），鎖也有 TTL 保底自動過期
-5. 取消登記／加入候補／退出候補共用同一把 `lock:route:{routeId}`，與劃位互斥，確保候補遞補不會跟新登記互相踩到
+2. **登記為無鎖並行**：交易內以 `count(bookings) >= 42` 做滿位／重複的友善檢查後，直接 `INSERT` `Booking`
+3. 併發正確性完全交給資料庫唯一約束仲裁——`@@unique([routeId, seatNumber])`（同座位只能一人）與 `@@unique([studentId])`（一人只能一筆）；撞約束回 `P2002`，轉成對應的 409 訊息，絕不超賣
+4. 加入候補同為無鎖並行，一人一筆候補由 `@@unique([studentId])` 保證，名額不設上限
+5. **取消登記／退出候補**在交易最前面呼叫 `server/lock.ts` 的 `lockRoute(tx, routeId)` 取得 `pg_advisory_xact_lock(routeId)`，序列化同路線的取消與遞補；鎖在交易 commit/rollback 時由資料庫自動釋放，無需手動解鎖、無 TTL
 
 ---
 
@@ -94,12 +93,12 @@ fssh-bus/
 ├── components/                # UI 元件（SeatMap、Ticket、Stepper 等）
 ├── hooks/                      # React hooks（useAuth）
 ├── lib/                        # 型別定義、座位邏輯、Prisma 產生的 client
-├── server/                     # 伺服端專用模組（auth、db、redis、lock、google…）
+├── server/                     # 伺服端專用模組（auth、db、lock、google…）
 ├── services/                   # 前端呼叫 API 的封裝（services/api.ts）
 ├── schema.prisma               # 資料庫 Schema
 ├── nginx.conf                  # Nginx 主設定
 ├── Dockerfile                  # 多階段建置（dev / builder / migrate / runner）
-├── docker-compose.yml           # 正式環境（nginx + nextjs + db + redis + certbot）
+├── docker-compose.yml           # 正式環境（nginx + nextjs + db + certbot）
 ├── docker-compose.dev.yml       # 開發環境（熱重載、掛載原始碼）
 └── scripts/
     ├── dev.sh                   # 一鍵啟動開發環境
@@ -113,9 +112,9 @@ fssh-bus/
 | 資料表 | 說明 |
 |---|---|
 | `User` | 使用者，以學號 `studentId` 為主鍵，Google 登入時自動 Upsert |
-| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]`；`isFull` 為座位滿位後系統自動設定的旗標，候補名單清空時會自動重設 |
+| `Route` | 路線（一條路線即一台車），`stations` 為 JSON 陣列 `[{ name, arriveAt, monthlyPrice }]`；是否滿位不存旗標，一律由即時 `count(bookings) >= 42` 計算 |
 | `Booking` | 登記紀錄，`(routeId, seatNumber)` 唯一、`studentId` 唯一（一人一位），取消即刪除該筆資料；`monthlyPrice` / `arriveAt` 為登記當下的站點快照，不受之後路線編輯影響 |
-| `WaitlistEntry` | 候補名單，路線滿位後才開放登記，`studentId` 唯一（一人一候補），最多 10 人，依 `createdAt` 排序、座位釋出時最舊的一筆自動遞補 |
+| `WaitlistEntry` | 候補名單，路線滿位後才開放登記，`studentId` 唯一（一人一候補），名額不設上限，依 `createdAt` 排序、座位釋出時最舊的一筆自動遞補 |
 | `Setting` | Key-Value 系統設定，用於存放 `bookingStart` / `bookingEnd` 登記開放時間 |
 
 ---
@@ -129,7 +128,6 @@ fssh-bus/
 |---|---|
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | PostgreSQL 帳密與資料庫名稱 |
 | `DATABASE_URL` | Prisma 連線字串（容器內用服務名稱 `db`，本機開發改 `localhost`） |
-| `REDIS_URL` | Redis 連線字串 |
 | `JWT_SECRET` | JWT 簽章密鑰，30 分鐘過期，請用 `openssl rand -base64 48` 產生 |
 | `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth 用戶端 ID |
 | `ALLOWED_EMAIL_DOMAIN` / `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN` | 僅允許此網域的 Google 帳號登入 |
@@ -141,7 +139,7 @@ fssh-bus/
 
 ### 方法一：Docker 開發環境（推薦）
 
-一鍵啟動 `db + redis + nextjs`（dev target，熱重載、掛載原始碼、啟動時自動 `prisma db push`）：
+一鍵啟動 `db + nextjs`（dev target，熱重載、掛載原始碼、啟動時自動 `prisma db push`）：
 
 ```bash
 ./scripts/dev.sh
@@ -153,7 +151,7 @@ fssh-bus/
 
 ### 方法二：本機直接執行（不透過 Docker 跑 Next.js）
 
-需要自行準備可連線的 PostgreSQL 與 Redis（例如用 `docker compose -f docker-compose.dev.yml up db redis -d` 只啟動這兩個服務）。
+需要自行準備可連線的 PostgreSQL（例如用 `docker compose -f docker-compose.dev.yml up db -d` 只啟動資料庫服務）。
 
 ```bash
 npm install          # 安裝套件（會自動執行 prisma generate）
@@ -167,7 +165,7 @@ npm run dev            # 啟動開發伺服器
 ./scripts/deploy.sh
 ```
 
-流程：`nginx`（含 SSL / rate limit）→ `migrate`（一次性同步 DB schema）→ `nextjs`（production build）→ `db` / `redis`。首次執行同樣會自動建立 `.env`，但**務必手動編輯**填入正式的 `GOOGLE_CLIENT_ID`、`ALLOWED_EMAIL_DOMAIN`、`ADMIN_EMAILS` 等變數後再重新執行部署。
+流程：`nginx`（含 SSL / rate limit）→ `migrate`（一次性同步 DB schema）→ `nextjs`（production build）→ `db`。首次執行同樣會自動建立 `.env`，但**務必手動編輯**填入正式的 `GOOGLE_CLIENT_ID`、`ALLOWED_EMAIL_DOMAIN`、`ADMIN_EMAILS` 等變數後再重新執行部署。
 
 > ⚠️ nginx rate limit 等細節請參考 `nginx.conf`。
 
@@ -212,7 +210,7 @@ gunzip -c ./data/backups/<檔名>.sql.gz | docker compose exec -T db psql -U ${P
 | `POST /api/student/bookings` | 建立我的登記（路線已滿位時會被拒絕，需改走候補） |
 | `DELETE /api/student/bookings/[id]` | 取消單筆登記（若路線已滿位，候補第一位會自動遞補） |
 | `GET /api/student/routes/[id]/seats` | 查詢某路線座位配置狀態 |
-| `POST /api/student/waitlist` | 加入候補名單（路線需已滿位，最多 10 人） |
+| `POST /api/student/waitlist` | 加入候補名單（路線需已滿位，名額不設上限） |
 | `DELETE /api/student/waitlist/[id]` | 自行取消候補 |
 | `GET /api/admin/bookings` | 管理員查詢所有登記紀錄 |
 | `PATCH/DELETE /api/admin/bookings/[id]` | 管理員標記繳費 / 刪除單筆登記（刪除時同樣觸發候補遞補） |

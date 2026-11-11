@@ -2,18 +2,15 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
 import { ok, fail, ApiFailure } from "@/server/http";
-import { acquireLockResilient, releaseLock, routeLockKey, studentLockKey } from "@/server/lock";
 import { getBookingWindow } from "@/server/settings";
-import { MAX_WAITLIST } from "@/server/waitlist";
+import { isRouteFull } from "@/server/booking";
 import type { StationDto } from "@/lib/types";
 
-const LOCK_TTL_MS = 5000;
-
 /**
- * POST /api/student/waitlist — 路線滿位後加入候補名單（僅限學生，最多 10 人）
- * Redis 分散式鎖，由外而內依序取得——
- *   學生鎖（序列化同一學生的登記／候補寫入，避免併發請求繞過「一人一位」限制）
- *   → 路線鎖（序列化同一路線的候補加入與座位遞補，避免候補名額超收）
+ * POST /api/student/waitlist — 路線滿位後加入候補名單（僅限學生，名額不設上限）
+ *
+ * 同為尖峰路徑，無鎖並行：一人一筆候補由 @@unique([enrollmentYear, studentId]) 保證，撞 P2002 即代表重複。
+ * 「是否已滿」以即時 count 判斷，僅作友善提示。
  */
 export async function POST(request: Request) {
     const auth = await requireStudent(request);
@@ -39,39 +36,15 @@ export async function POST(request: Request) {
         return fail(403, "目前不在登記時間");
     }
 
-    const studentLock = studentLockKey(auth.enrollmentYear, auth.studentId);
-    const routeLock = routeLockKey(routeId);
-
-    let studentToken: string | null = null;
-    let routeToken: string | null = null;
-
     try {
-        try {
-            studentToken = await acquireLockResilient(studentLock, LOCK_TTL_MS);
-        } catch (error) {
-            console.error("取得學生鎖失敗:", error);
-            return fail(503, "系統忙碌中，請稍後再試");
-        }
-        if (!studentToken) {
-            return fail(423, "你有其他登記或候補要求正在處理中，請稍後再試");
-        }
-
-        try {
-            routeToken = await acquireLockResilient(routeLock, LOCK_TTL_MS);
-        } catch (error) {
-            console.error("取得路線鎖失敗:", error);
-            return fail(503, "系統忙碌中，請稍後再試");
-        }
-        if (!routeToken) {
-            return fail(423, "候補名單操作中，請稍後再試");
-        }
-
         const entry = await prisma.$transaction(async (tx) => {
             const route = await tx.route.findUnique({ where: { id: routeId } });
             if (!route) {
                 throw new ApiFailure(404, "查無此路線");
             }
-            if (!route.isFull) {
+
+            const bookingCount = await tx.booking.count({ where: { routeId } });
+            if (!isRouteFull(bookingCount)) {
                 throw new ApiFailure(409, "此路線尚未滿位，請直接登記座位");
             }
 
@@ -94,11 +67,6 @@ export async function POST(request: Request) {
                 throw new ApiFailure(409, "你已在候補名單中");
             }
 
-            const count = await tx.waitlistEntry.count({ where: { routeId } });
-            if (count >= MAX_WAITLIST) {
-                throw new ApiFailure(409, "候補名單已額滿");
-            }
-
             return tx.waitlistEntry.create({
                 data: { enrollmentYear: auth.enrollmentYear, studentId: auth.studentId, routeId, station },
                 include: { route: { select: { id: true, name: true, stations: true } } },
@@ -110,18 +78,11 @@ export async function POST(request: Request) {
         if (error instanceof ApiFailure) {
             return fail(error.status, error.message);
         }
-        // ── 第三道防線：@@unique([enrollmentYear, studentId]) 唯一約束衝突（理論上不會發生） ──
+        // ── 唯一約束衝突：一人一筆候補的最終防線 ──
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
             return fail(409, "你已在候補名單中");
         }
         console.error("候補登記失敗:", error);
         return fail(500, "候補登記失敗，請稍後再試");
-    } finally {
-        if (routeToken) {
-            await releaseLock(routeLock, routeToken);
-        }
-        if (studentToken) {
-            await releaseLock(studentLock, studentToken);
-        }
     }
 }

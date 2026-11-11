@@ -3,6 +3,7 @@ import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { parseStations } from "@/server/stations";
+import { isRouteFull } from "@/server/booking";
 
 /** GET /api/admin/routes — 全部路線 */
 export async function GET(request: Request) {
@@ -13,9 +14,15 @@ export async function GET(request: Request) {
 
     const routes = await prisma.route.findMany({
         orderBy: { id: "asc" },
+        include: { _count: { select: { bookings: true } } },
     });
 
-    return ok(routes);
+    return ok(
+        routes.map(({ _count, ...route }) => ({
+            ...route,
+            isFull: isRouteFull(_count.bookings),
+        })),
+    );
 }
 
 /** POST /api/admin/routes — 新增路線 */
@@ -48,5 +55,6 @@ export async function POST(request: Request) {
         },
     });
 
-    return ok(route, 201);
+    // 新路線尚無任何登記，必定未滿
+    return ok({ ...route, isFull: false }, 201);
 }

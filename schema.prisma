@@ -28,17 +28,17 @@ model User {
 }
 
 // 路線表：一條路線即一台車，stations 為 JSON 陣列 [{ name, arriveAt, monthlyPrice }]
+// 「是否滿位」不再儲存旗標，一律由即時 count(bookings) >= TOTAL_SEATS 計算，杜絕旗標與實際座位數不同步的誤判
 model Route {
   id       Int             @id @default(autoincrement())
   name     String
   stations Json
-  isFull   Boolean         @default(false) // 座位滿位後由系統自動設為 true，單向旗標，永不復原
   bookings Booking[]
   waitlist WaitlistEntry[]
 }
 
 // 登記紀錄表：同一路線的同一個座位，全資料庫只能有一筆紀錄（終極防線）
-// 一人一筆有效登記由 @@unique([enrollmentYear, studentId]) 在 DB 層強制，Redis 學生鎖＋交易內檢查是前兩道防線
+// 一人一筆有效登記由 @@unique([enrollmentYear, studentId]) 在 DB 層強制，交易內檢查僅用於回傳友善訊息
 // 取消 = 直接刪除該列，重新登記時直接 INSERT
 model Booking {
   id             Int      @id @default(autoincrement())

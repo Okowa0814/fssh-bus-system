@@ -3,6 +3,7 @@ import { prisma } from "@/server/db";
 import { requireAdmin, isResponse } from "@/server/auth";
 import { ok, fail } from "@/server/http";
 import { parseStations } from "@/server/stations";
+import { isRouteFull } from "@/server/booking";
 
 /** PATCH /api/admin/routes/:id — 路線管理（站點切換、名稱） */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -50,8 +51,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
         return fail(404, "查無此路線");
     }
 
-    const route = await prisma.route.update({ where: { id: routeId }, data });
-    return ok(route);
+    const route = await prisma.route.update({
+        where: { id: routeId },
+        data,
+        include: { _count: { select: { bookings: true } } },
+    });
+    const { _count, ...rest } = route;
+    return ok({ ...rest, isFull: isRouteFull(_count.bookings) });
 }
 
 /**

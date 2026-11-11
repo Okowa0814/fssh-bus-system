@@ -1,9 +1,7 @@
 import { prisma } from "@/server/db";
 import { requireStudent, isResponse } from "@/server/auth";
-import { ok, fail } from "@/server/http";
-import { acquireLock, releaseLock, routeLockKey } from "@/server/lock";
-
-const LOCK_TTL_MS = 5000;
+import { ok, fail, ApiFailure } from "@/server/http";
+import { lockRoute } from "@/server/lock";
 
 /** DELETE /api/student/waitlist/:id — 自行退出候補名單（僅限學生；他人的候補一律回 404 不洩漏） */
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -27,21 +25,21 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
         return fail(404, "Not Found");
     }
 
-    // 與座位遞補共用同一路線的鎖，避免退出候補的當下正好被遞補
-    const lockKey = routeLockKey(entry.routeId);
-    const lockToken = await acquireLock(lockKey, LOCK_TTL_MS);
-    if (!lockToken) {
-        return fail(423, "候補名單操作中，請稍後再試");
-    }
-
+    // 與座位遞補共用同一路線的 advisory 鎖，避免退出候補的當下正好被遞補
     try {
-        const stillWaiting = await prisma.waitlistEntry.findUnique({ where: { id: entryId } });
-        if (!stillWaiting) {
-            return fail(409, "此候補已被遞補處理，請重新整理頁面");
-        }
-        await prisma.waitlistEntry.delete({ where: { id: entryId } });
+        await prisma.$transaction(async (tx) => {
+            await lockRoute(tx, entry.routeId);
+            const stillWaiting = await tx.waitlistEntry.findUnique({ where: { id: entryId } });
+            if (!stillWaiting) {
+                throw new ApiFailure(409, "此候補已被遞補處理，請重新整理頁面");
+            }
+            await tx.waitlistEntry.delete({ where: { id: entryId } });
+        });
         return ok({ id: entryId });
-    } finally {
-        await releaseLock(lockKey, lockToken);
+    } catch (error) {
+        if (error instanceof ApiFailure) {
+            return fail(error.status, error.message);
+        }
+        throw error;
     }
 }
