@@ -3,120 +3,174 @@
 import { RefreshIcon } from "@/components/icons";
 import { BUS_LAYOUT, type SeatCell } from "@/lib/seat";
 
-function cellClass(taken: boolean): string {
-    if (taken) return "cursor-not-allowed bg-accent/20 text-ink shadow-md";
-
-    return "border border-line text-fg hover:border-accent hover:bg-accent-wash";
-}
-
 function Cell({
     cell,
     taken,
+    selected,
     disabled,
     onSelect,
 }: {
     cell: SeatCell;
     taken: boolean;
+    selected: boolean;
     disabled: boolean;
     onSelect: (seat: number) => void;
 }) {
     switch (cell.type) {
         case "seat":
+            if (taken) {
+                return (
+                    <button
+                        type="button"
+                        disabled
+                        aria-label={`座位 ${cell.number}，已有人登記`}
+                        className="size-full cursor-not-allowed rounded-xl bg-line text-[15px] text-[#8a8e96]"
+                    >
+                        {cell.number}
+                    </button>
+                );
+            }
+            if (selected) {
+                return (
+                    <button
+                        type="button"
+                        disabled={disabled}
+                        aria-pressed="true"
+                        aria-label={`座位 ${cell.number}，已選擇`}
+                        onClick={() => onSelect(cell.number)}
+                        className="size-full rounded-full bg-accent text-lg font-semibold text-ink"
+                    >
+                        {cell.number}
+                    </button>
+                );
+            }
             return (
                 <button
                     type="button"
-                    disabled={taken || disabled}
+                    disabled={disabled}
+                    aria-label={`座位 ${cell.number}`}
                     onClick={() => onSelect(cell.number)}
-                    className={`grid h-12 place-items-center rounded-xl font-mono text font-medium transition md:rotate-90 ${cellClass(taken)}`}
-                    aria-label={`座位 ${cell.number}${taken ? "（已被登記）" : ""}`}
+                    className="size-full rounded-xl border-[1.5px] border-faint bg-surface text-base font-medium text-fg transition enabled:hover:border-fg enabled:hover:bg-surface2 disabled:opacity-60"
                 >
                     {cell.number}
                 </button>
             );
         case "driver":
             return (
-                <div className="grid h-12 place-items-center rounded-xl bg-warning-wash text-xs font-medium text-warning-ink md:rotate-90">
-                    車長
+                <div className="grid size-full place-items-center rounded-xl bg-surface2 text-xs text-muted">
+                    司機
                 </div>
             );
         case "door":
             return (
-                <div className="grid h-12 place-items-center rounded-xl bg-warning-wash text-xs font-medium text-warning-ink md:rotate-90">
+                <div className="grid size-full place-items-center rounded-xl border-[1.5px] border-dashed border-line-strong text-xs text-muted">
                     前門
                 </div>
             );
         case "exit":
             return (
-                <div className="grid h-12 place-items-center rounded-xl border bg-warning-wash border-dashed border-line text-[10px] text-muted md:rotate-90">
+                <div className="grid size-full place-items-center rounded-xl bg-[repeating-linear-gradient(-45deg,var(--line-soft)_0_6px,var(--surface)_6px_12px)] text-[11px] text-muted">
                     安全門
                 </div>
             );
         case "aisle":
         case "empty":
-            return <div className="h-12" />;
+            return <div aria-hidden="true" />;
     }
 }
 
-/** 遊覽車座位圖（依 ai/image.png 的 42 座佈局） */
+/** 遊覽車座位圖（42 座）：手機直向、桌機橫向（車頭在左） */
 export function SeatMap({
     takenSeats,
+    selected = null,
     disabled = false,
     onSelect,
     onRefresh,
 }: {
     takenSeats: number[];
+    selected?: number | null;
     disabled?: boolean;
     onSelect: (seat: number) => void;
     onRefresh: () => void;
 }) {
     const taken = new Set(takenSeats);
 
+    const renderCell = (cell: SeatCell, key: string) => (
+        <Cell
+            key={key}
+            cell={cell}
+            taken={cell.type === "seat" && taken.has(cell.number)}
+            selected={cell.type === "seat" && cell.number === selected}
+            disabled={disabled}
+            onSelect={onSelect}
+        />
+    );
+
     return (
-        <div className="relative flex flex-col items-center gap-3.5 rounded-card bg-surface p-5 shadow-card">
-            {/* Refresh button */}
-            <button
-                type="button"
-                onClick={onRefresh}
-                aria-label="重新整理座位狀態"
-                className="absolute top-3 right-3 grid size-8 place-items-center rounded-full text-muted transition hover:bg-surface2 hover:text-fg"
-            >
-                <RefreshIcon className="size-4.5" />
-            </button>
-            
-            {/* Legend */ }
-            <div className="flex flex-wrap items-center justify-center gap-3.5 pt-1 text-muted">
-                
-                <span className="flex items-center gap-1.5">
-                    <span className="size-3 rounded border border-line" />
-                    可選
-                </span>
-                <span className="flex items-center gap-1.5">
-                    <span className="size-3 rounded bg-accent" />
-                    已被登記
-                </span>
+        <section
+            aria-label="座位圖"
+            className="flex flex-col gap-5 rounded-3xl border border-line p-4 md:p-6"
+        >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Legend */}
+                <ul aria-label="圖例" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-fg2">
+                    <li className="flex items-center gap-2">
+                        <span aria-hidden="true" className="size-4.5 rounded-[5px] border-[1.5px] border-faint" />
+                        空位
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <span aria-hidden="true" className="size-4.5 rounded-[5px] bg-line" />
+                        已有人登記
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <span aria-hidden="true" className="size-4.5 rounded-full bg-accent" />
+                        你選的位子
+                    </li>
+                </ul>
+
+                {/* Refresh button */}
+                <button
+                    type="button"
+                    onClick={onRefresh}
+                    aria-label="重新整理座位狀態"
+                    className="flex min-h-11 items-center gap-2 rounded-full bg-surface2 px-3.5 text-sm transition hover:bg-line"
+                >
+                    <RefreshIcon className="size-4" />
+                    更新座位
+                </button>
             </div>
 
-            <div className="relative h-[740px] w-[230px] md:h-[230px] md:w-[740px]">
-                <div className="absolute top-1/2 left-1/2 flex h-[740px] w-[230px] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3 md:-rotate-90">
-                    <p className="flex h-8 w-full items-center justify-center border-b border-dashed border-line font-mono text-muted">
-                        車頭
-                    </p>
+            {/* Mobile：直向，車頭在上 */}
+            <div className="mx-auto flex w-fit flex-col rounded-t-[56px] rounded-b-[22px] border-2 border-line px-4 pb-4 md:hidden">
+                <span aria-hidden="true" className="flex h-11 items-center justify-center text-[13px] tracking-[0.3em] text-muted">
+                    車頭
+                </span>
+                <div className="grid auto-rows-[44px] grid-cols-[44px_44px_18px_44px_44px] gap-1.5">
+                    {BUS_LAYOUT.flatMap((row, rowIndex) =>
+                        row.map((cell, colIndex) => renderCell(cell, `m-${rowIndex}-${colIndex}`)),
+                    )}
+                </div>
+            </div>
 
-                    <div className="grid w-full grid-cols-[1fr_1fr_0.6fr_1fr_1fr] gap-1.5">
+            {/* Desktop：橫向，車頭在左 */}
+            <div className="hidden overflow-x-auto pb-1 md:block">
+                <div className="mx-auto flex w-max items-stretch rounded-l-[64px] rounded-r-[22px] border-2 border-line py-5 pr-6">
+                    <div
+                        aria-hidden="true"
+                        className="mr-3 flex w-14 items-center justify-center text-[13px] tracking-[0.3em] text-muted [writing-mode:vertical-rl]"
+                    >
+                        車頭
+                    </div>
+                    <div className="grid auto-cols-[52px] grid-flow-col grid-rows-[52px_52px_24px_52px_52px] gap-2">
                         {BUS_LAYOUT.flatMap((row, rowIndex) =>
-                            row.map((cell, colIndex) => (
-                                <Cell
-                                    key={`${rowIndex}-${colIndex}`}
-                                    cell={cell}
-                                    taken={cell.type === "seat" && taken.has(cell.number)}
-                                    disabled={disabled}
-                                    onSelect={onSelect}
-                                />
-                            )),
+                            row
+                                .slice()
+                                .reverse()
+                                .map((cell, colIndex) => renderCell(cell, `d-${rowIndex}-${colIndex}`)),
                         )}
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
     );
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Noto_Sans_TC } from "next/font/google";
+import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
 
 // Define Fonts
@@ -10,16 +10,16 @@ const notoSansTC = Noto_Sans_TC({
     display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
+const outfit = Outfit({
     subsets: ["latin"],
-    weight: ["400", "500"],
-    variable: "--font-ibm-plex-mono",
+    weight: ["400", "500", "600", "700"],
+    variable: "--font-outfit",
     display: "swap",
 });
 
 export const metadata: Metadata = {
     title: "鳳山高中專車登記系統",
-    description: "鳳山高中放學專車線上登記系統",
+    description: "鳳山高中專車線上登記系統",
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
     return (
         <html
             lang="zh-Hant"
-            className={`h-full antialiased ${notoSansTC.variable} ${ibmPlexMono.variable}`}
+            className={`h-full antialiased ${notoSansTC.variable} ${outfit.variable}`}
         >
             <body className="min-h-full flex flex-col">{children}</body>
         </html>

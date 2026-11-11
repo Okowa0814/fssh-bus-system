@@ -40,7 +40,7 @@ export function ActionMenu({ items }: { items: ActionMenuItem[] }) {
             </button>
 
             {open && (
-                <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-field border border-line bg-surface shadow-card">
+                <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-field border border-line bg-surface shadow-float">
                     {items.map((item) => (
                         <button
                             key={item.label}

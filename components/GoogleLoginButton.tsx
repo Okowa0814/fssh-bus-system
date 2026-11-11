@@ -46,7 +46,7 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
             });
             containerRef.current.innerHTML = "";
             window.google.accounts.id.renderButton(containerRef.current, {
-                theme: "outline",
+                theme: "filled_black",
                 size: "large",
                 shape: "pill",
                 width: 280,
@@ -78,5 +78,5 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
         alert(error);
         return;
     }
-    return <div ref={containerRef} className="flex min-h-11 justify-center" />;
+    return <div ref={containerRef} className="flex min-h-11 justify-start" />;
 }
