@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { BusIcon } from "@/components/icons"
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { BusIcon, CheckIcon } from "@/components/icons";
 
 import type {
     BookingDto,
@@ -13,55 +13,97 @@ import type {
     WaitlistEntryDto,
 } from "@/lib/types";
 
-import { SeatMap, Stepper, Ticket } from "@/components";
+import { SeatMap, Stepper } from "@/components";
 import { api, ApiError } from "@/services/api";
-import { useCurrentUser } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/pricing";
-
-const STEPS = ["選路線", "選站點", "選座位", "完成"];
 
 type BookingResult =
     | { ok: true; kind: "booking"; booking: BookingDto }
     | { ok: true; kind: "waitlist"; entry: WaitlistEntryDto }
     | { ok: false };
 
+// 路線月費區間（依上車站不同）
+function priceRange(route: RouteDto): string {
+    const prices = route.stations.map((s) => s.monthlyPrice);
+    if (prices.length === 0) return "—";
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? formatPrice(min) : `${formatPrice(min)}–${max}`;
+}
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+function formatDateTime(iso: string): string {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 置中的狀態卡（非登記時間、已登記、候補中、失敗…）
+function StateCard({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+    return (
+        <div className="relative mx-auto flex w-full max-w-[560px] flex-col items-start gap-5 overflow-hidden rounded-[28px] border border-line p-7 md:p-10">
+            <span
+                aria-hidden="true"
+                className="absolute -top-px -right-px size-28 rounded-bl-full bg-surface2 md:size-36"
+            />
+            <span className="relative">{icon}</span>
+            <h1 className="relative font-display text-[26px] leading-tight font-bold md:text-[32px]">{title}</h1>
+            <div className="relative flex w-full flex-col items-start gap-4 text-[15px] leading-[1.7] text-muted md:text-base">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+// 步驟底部操作列：手機固定在畫面底部，桌機接在內容下方
+function ActionBar({ children }: { children: ReactNode }) {
+    return (
+        <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-3 border-t border-line bg-bg px-5 pt-3.5 pb-[calc(14px+env(safe-area-inset-bottom))] md:static md:flex-wrap md:justify-between md:gap-4 md:border-line-soft md:px-0 md:pt-5 md:pb-0">
+            {children}
+        </div>
+    );
+}
+
+const primaryButton =
+    "flex h-13.5 flex-1 items-center justify-center rounded-full bg-fg px-8 font-medium text-ink transition disabled:bg-faint md:h-14 md:flex-none";
+const secondaryButton =
+    "flex h-13.5 flex-1 items-center justify-center rounded-full border-[1.5px] border-line bg-surface px-5 font-medium transition hover:border-fg md:h-12 md:flex-none md:text-[15px]";
 
 export default function BookingPage() {
     /*
-        - user: 使用者資料
         - loading: 是否正在載入初始資料
         - window_: 登記開放時間資訊
         - existing: 使用者已存在的登記資料
         - routes: 可選的路線列表
-        - profile: 使用者個人資料
-        
+
         - step: 當前步驟索引
         - route: 選擇的路線
         - selectedStation: 選擇的上車站點
+        - pendingSeat: 點選後等待確認的座位
         - takenSeats: 已被佔用的座位號碼列表
         - seatsLoading: 是否正在載入座位資訊
         - submitting: 是否正在提交登記
         - result: 登記結果
     */
-    const { user } = useCurrentUser();
     const [loading, setLoading] = useState(true);
 
     const [window_, setWindow] = useState<BookingWindowDto | null>(null);
     const [existing, setExisting] = useState<BookingDto | null>(null);
     const [existingWaitlist, setExistingWaitlist] = useState<WaitlistEntryDto | null>(null);
     const [routes, setRoutes] = useState<RouteDto[]>([]);
-    const [profile, setProfile] = useState<MeResponse["user"] | null>(null);
 
     const [step, setStep] = useState(0);
     const [route, setRoute] = useState<RouteDto | null>(null);
     const [selectedStation, setSelectedStation] = useState<string | null>(null);
+    const [pendingSeat, setPendingSeat] = useState<number | null>(null);
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
     const [seatsLoading, setSeatsLoading] = useState(false);
     const [seatsError, setSeatsError] = useState(false);
-    
+
     const [submitting, setSubmitting] = useState(false);
     const [result, setResult] = useState<BookingResult | null>(null);
-    
+
     // Load initial data on component mount
     useEffect(() => {
         Promise.all([
@@ -74,12 +116,11 @@ export default function BookingPage() {
                 setExisting(meData.booking);
                 setExistingWaitlist(meData.waitlist);
                 setRoutes(routesData);
-                setProfile(meData.user);
             })
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
-    
+
     // Load seats for a given route ID
     const loadSeats = useCallback(async (id: number) => {
         setSeatsLoading(true);
@@ -94,19 +135,25 @@ export default function BookingPage() {
             setSeatsLoading(false);
         }
     }, []);
-    
-    const chooseRoute = useCallback(
-        (selected: RouteDto) => {
-            setRoute(selected);
+
+    // Step 0: pick a route (highlight only — "下一步" moves on)
+    const pickRoute = (selected: RouteDto) => {
+        if (route?.id !== selected.id) {
             setSelectedStation(null);
-            setStep(1);
-            if (!selected.isFull) {
-                void loadSeats(selected.id);
-            }
-        },
-        [loadSeats],
-    );
-        
+        }
+        setRoute(selected);
+    };
+
+    const confirmRoute = () => {
+        if (!route) {
+            return;
+        }
+        setStep(1);
+        if (!route.isFull) {
+            void loadSeats(route.id);
+        }
+    };
+
     // Submit a waitlist join for a full route (no seat map — seat is auto-assigned on promotion)
     const submitWaitlist = async (routeId: number, stationName: string) => {
         setSubmitting(true);
@@ -125,24 +172,23 @@ export default function BookingPage() {
         }
     };
 
-    const chooseStation = useCallback(
-        (stationName: string) => {
-            if (route?.isFull) {
-                const confirmed = window.confirm(
-                    `「${route.name}」座位已滿，是否加入候補名單（${stationName}）？`,
-                );
-                if (!confirmed) {
-                    return;
-                }
-                setSelectedStation(stationName);
-                void submitWaitlist(route.id, stationName);
+    // Step 1: confirm the picked station — full routes go to the waitlist instead of the seat map
+    const confirmStation = () => {
+        if (!route || !selectedStation) {
+            return;
+        }
+        if (route.isFull) {
+            const confirmed = window.confirm(
+                `「${route.name}」座位已滿，是否加入候補名單（${selectedStation}）？`,
+            );
+            if (!confirmed) {
                 return;
             }
-            setSelectedStation(stationName);
-            setStep(2);
-        },
-        [route],
-    );
+            void submitWaitlist(route.id, selectedStation);
+            return;
+        }
+        setStep(2);
+    };
 
     // Re-sync route.isFull with the server — the route the student picked earlier in the
     // wizard may have filled up in the meantime, so a failed submit needs fresh data to
@@ -191,25 +237,9 @@ export default function BookingPage() {
             setResult({ ok: false });
         } finally {
             setSubmitting(false);
+            setPendingSeat(null);
             setStep(3);
         }
-    };
-
-    // Ask for confirmation on seat tap
-    const handleSelectSeat = (seatNumber: number) => {
-        if (route === null || selectedStation === null) {
-            return;
-        }
-
-        const confirmed = window.confirm(
-            `確定要選擇 ${route.name}・${selectedStation}・座位 ${seatNumber} 號嗎？`,
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        void submit(seatNumber);
     };
 
     // Cancel the current waitlist entry
@@ -231,6 +261,7 @@ export default function BookingPage() {
     // Retry booking by resetting the result and step, and reloading seats if a route is selected
     const retry = () => {
         setResult(null);
+        setPendingSeat(null);
         if (route?.isFull) {
             setStep(1);
             return;
@@ -241,278 +272,500 @@ export default function BookingPage() {
         }
     };
 
-    const rows = [
-        { k: "姓名", v: profile?.name ?? user.name, mono: false },
-        { k: "學號", v: profile?.studentId ?? user.sub, mono: true },
-        { k: "入學學年", v: (profile?.enrollmentYear ?? user.enrollmentYear) || "—", mono: false },
+    const gotoStep = (index: number) => {
+        setPendingSeat(null);
+        setStep(index);
+    };
+
+    const station = route?.stations.find((s) => s.name === selectedStation) ?? null;
+    const succeeded = step === 3 && !!result?.ok;
+    const bookedSeat = result?.ok && result.kind === "booking" ? result.booking.seatNumber : null;
+
+    const steps = [
+        { label: "選路線", sub: route ? route.name : "尚未選擇" },
+        { label: "上車站", sub: selectedStation ?? "尚未選擇" },
+        {
+            label: "選座位",
+            sub: bookedSeat ? `座位 ${bookedSeat}` : pendingSeat ? `座位 ${pendingSeat}` : "尚未選擇",
+        },
+        { label: "完成", sub: succeeded ? "已完成" : "確認後完成" },
     ];
 
-    return (
-        <>
-            {
-                loading ? (
-                    // Loading
-                    <p className="py-16 text-center text-xl text-muted">載入中…</p>
-                ) : !window_?.open ? (
-                    // Not in booking time
-                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                        {/* Icon */ }
-                        <span className="grid size-13 place-items-center rounded-2xl bg-warning-wash text-warning-ink">
-                            <BusIcon className="size-8" />
+    if (loading) {
+        return <p className="py-16 text-center text-lg text-muted">載入中…</p>;
+    }
+
+    // Not in booking time
+    if (!window_?.open) {
+        return (
+            <StateCard
+                icon={<span className="block size-11 rounded-lg border-[3px] border-faint" />}
+                title="現在還不能登記"
+            >
+                {window_?.start && window_?.end ? (
+                    <p>
+                        開放時間：
+                        <span className="font-semibold text-fg">
+                            {formatDateTime(window_.start)} 至 {formatDateTime(window_.end)}
                         </span>
-
-                        {/* Title */ }
-                        <h2 className="text-2xl font-bold tracking-tight">目前不在登記時間</h2>
-
-                        {/* Description */ }
-                        {window_?.start && window_?.end ? (
-                            <p className=" leading-relaxed text-muted">
-                                開放時間為
-                                <br />
-                                {new Date(window_.start).toLocaleString("zh-TW", { hour12: false })}
-                                <br />～ {new Date(window_.end).toLocaleString("zh-TW", { hour12: false })}
-                            </p>
-                        ) : (
-                            <p className="text-muted">開放時間請留意學校公告。</p>
-                        )}
-                    </div>
-                ) : existing ? (
-                    // Already booked
-                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                        <span className="grid size-13 place-items-center rounded-full bg-success-wash text-success-ink">
-                            ✓
-                        </span>
-
-                        <h2 className="text-[19px] font-bold tracking-tight">你已完成登記</h2>
-
-                        <p className="text-sm text-muted">
-                            {existing.route.name}・{existing.station}・座位 {existing.seatNumber} 號
-                        </p>
-
-                        <p className="text-xs text-muted">如需改選，請先在首頁取消原登記。</p>
-
-                        <Link
-                            href="/"
-                            className="mt-2 inline-block rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
-                        >
-                            回首頁
-                        </Link>
-                    </div>
-                ) : existingWaitlist ? (
-                    // Currently on a waitlist
-                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                        <span className="grid size-13 place-items-center rounded-full bg-warning-wash text-warning-ink">
-                            <BusIcon className="size-8" />
-                        </span>
-
-                        <h2 className="text-[19px] font-bold tracking-tight">候補中</h2>
-
-                        <p className="text-sm text-muted">
-                            {existingWaitlist.route.name}・{existingWaitlist.station}
-                        </p>
-
-                        <p className="text-sm font-medium text-accent-ink">
-                            目前候補第 {existingWaitlist.position} 位
-                        </p>
-
-                        <p className="text-xs text-muted">有座位釋出時會依候補順序自動遞補。</p>
-
-                        <button
-                            type="button"
-                            onClick={() => void cancelWaitlist()}
-                            className="mt-2 rounded-field border border-line px-5 py-2.5 text-sm font-medium text-muted"
-                        >
-                            取消候補
-                        </button>
-                    </div>
+                    </p>
                 ) : (
-                    // Booking steps
-                    <div className="flex flex-col gap-6">
-                        <Stepper steps={STEPS} current={step} goto={setStep} />
+                    <p>開放時間請留意學校公告。</p>
+                )}
+                <Link href="/routes" className={primaryButton}>
+                    先看路線
+                </Link>
+            </StateCard>
+        );
+    }
 
-                        {/* Step 0: Choose Route */}
-                        {step === 0 && (
-                            <div className="flex flex-col gap-4">
-                                {/* Header */ }
-                                <h2 className="text-[clamp(24px,3.2vw,32px)] font-bold tracking-tight">
-                                    你要搭乘哪個路線？
-                                </h2>
+    // Already booked
+    if (existing) {
+        return (
+            <StateCard
+                icon={
+                    <span className="grid size-16 place-items-center rounded-full bg-accent text-[28px] font-semibold text-ink">
+                        {existing.seatNumber}
+                    </span>
+                }
+                title="你已完成登記"
+            >
+                <p>
+                    <span className="font-semibold text-fg">
+                        {existing.route.name}，{existing.station}上車，座位 {existing.seatNumber} 號。
+                    </span>
+                    <br />
+                    如需改選，請先在首頁取消原登記。
+                </p>
+                <Link href="/" className={primaryButton}>
+                    回首頁看車票
+                </Link>
+            </StateCard>
+        );
+    }
 
-                                {/* No routes available */ }
-                                {routes.length === 0 && (
-                                    <p className="py-10 text-center text-xl text-muted">目前沒有開放登記的路線。</p>
-                                )}
-                                
-                                {/* Routes list */ }
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    {routes.map((item) => (
+    // Currently on a waitlist
+    if (existingWaitlist) {
+        return (
+            <StateCard
+                icon={
+                    <span className="grid size-16 place-items-center rounded-full bg-fg text-ink">
+                        <BusIcon className="size-8" />
+                    </span>
+                }
+                title={`候補第 ${existingWaitlist.position} 位`}
+            >
+                <p>
+                    <span className="font-semibold text-fg">
+                        {existingWaitlist.route.name}，{existingWaitlist.station}上車。
+                    </span>
+                    <br />
+                    有座位釋出時會依候補順序自動遞補。
+                </p>
+                <button type="button" onClick={() => void cancelWaitlist()} className={secondaryButton}>
+                    取消候補
+                </button>
+            </StateCard>
+        );
+    }
+
+    // Booking steps
+    return (
+        <div className="flex flex-col gap-4.5 md:gap-7">
+            <Stepper steps={steps} current={succeeded ? steps.length : step} goto={step < 3 ? gotoStep : undefined} />
+
+            {/* Step 0: Choose Route */}
+            {step === 0 && (
+                <>
+                    <div className="flex flex-col gap-1 md:gap-1.5">
+                        <h1 className="font-display text-[26px] leading-[1.3] font-bold md:text-[32px] md:leading-tight">
+                            要搭哪一條路線？
+                        </h1>
+                        <p className="text-sm text-muted md:text-base">
+                            選一條經過你家附近的路線，下一步再選上車站。
+                        </p>
+                    </div>
+
+                    {/* No routes available */}
+                    {routes.length === 0 && (
+                        <p className="py-10 text-center text-lg text-muted">目前沒有開放登記的路線。</p>
+                    )}
+
+                    {/* Routes list */}
+                    <ul
+                        aria-label="路線"
+                        className="grid grid-cols-1 gap-2.5 md:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] md:gap-4"
+                    >
+                        {routes.map((item) => {
+                            const selected = route?.id === item.id;
+
+                            return (
+                                <li key={item.id} className="flex">
+                                    <button
+                                        type="button"
+                                        onClick={() => pickRoute(item)}
+                                        aria-pressed={selected}
+                                        className={`relative flex flex-1 flex-col items-start gap-2.5 rounded-[18px] border bg-surface px-4.5 pt-4.5 pb-4 text-left transition md:gap-4.5 md:rounded-card md:p-6 ${
+                                            selected
+                                                ? "border-fg ring-1 ring-fg"
+                                                : "border-line hover:border-line-strong"
+                                        }`}
+                                    >
+                                        {selected && (
+                                            <span
+                                                aria-hidden="true"
+                                                className="absolute top-4 right-4 grid size-6 place-items-center rounded-full bg-accent text-ink md:top-4.5 md:right-4.5 md:size-7"
+                                            >
+                                                <CheckIcon className="size-3.5 md:size-4" />
+                                            </span>
+                                        )}
+
+                                        <span className="pr-8 font-display text-xl font-bold md:text-[26px]">
+                                            {item.name}
+                                        </span>
+
+                                        <span className="flex flex-col gap-1.5 text-sm text-fg2 md:text-[15px]">
+                                            <span>{item.stations.length} 個停靠站</span>
+                                            {item.stations[0] && <span>首站 {item.stations[0].arriveAt} 發車</span>}
+                                            <span>月費 {priceRange(item)}</span>
+                                        </span>
+
+                                        {item.isFull ? (
+                                            <span className="flex items-center gap-2 text-[13px] font-medium text-accent md:text-sm">
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="h-2.5 w-[11px] bg-accent [clip-path:polygon(50%_0,100%_100%,0_100%)]"
+                                                />
+                                                已滿，可登記候補
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-2 text-[13px] font-medium md:text-sm">
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="size-2.5 rounded-full border-2 border-fg"
+                                                />
+                                                尚有座位
+                                            </span>
+                                        )}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <ActionBar>
+                        <span className="hidden text-base text-fg2 md:block">
+                            已選：<span className="font-bold text-fg">{route ? route.name : "尚未選擇"}</span>
+                        </span>
+                        <button type="button" disabled={!route} onClick={confirmRoute} className={primaryButton}>
+                            下一步<span className="hidden md:inline">：選上車站</span>
+                        </button>
+                    </ActionBar>
+                </>
+            )}
+
+            {/* Step 1: Choose Station */}
+            {step === 1 && route && (
+                <>
+                    <div className="flex flex-col gap-1 md:gap-1.5">
+                        <h1 className="font-display text-[26px] leading-[1.3] font-bold md:text-[32px] md:leading-tight">
+                            從哪一站上車？
+                        </h1>
+                        <p className="text-sm text-muted md:text-base">
+                            {route.name}的停靠站。月費依上車站不同。
+                            {route.isFull && (
+                                <span className="text-accent">此路線已滿位，選站後將加入候補名單。</span>
+                            )}
+                        </p>
+                    </div>
+
+                    {/* No stations available */}
+                    {route.stations.length === 0 && (
+                        <p className="py-10 text-center text-lg text-muted">這條路線目前沒有開放的站點。</p>
+                    )}
+
+                    {/* Stations timeline */}
+                    <ol aria-label={`${route.name}停靠站`} className="flex max-w-[760px] flex-col">
+                        {route.stations.map((s) => {
+                            const selected = selectedStation === s.name;
+
+                            return (
+                                <li key={s.name} className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-3 md:gap-x-4">
+                                    <span aria-hidden="true" className="relative flex justify-center">
+                                        <span className="absolute inset-y-0 w-0.5 bg-line" />
+                                        <span
+                                            className={`relative rounded-full border-2 ${
+                                                selected
+                                                    ? "mt-[27px] size-4.5 border-accent bg-accent"
+                                                    : "mt-[30px] size-3 border-fg bg-surface"
+                                            }`}
+                                        />
+                                    </span>
+                                    <span className="flex pb-2.5">
                                         <button
-                                            key={item.id}
                                             type="button"
-                                            onClick={() => chooseRoute(item)}
-                                            className={`flex flex-col gap-3.5 rounded-card border bg-surface p-5 text-left shadow-card transition
-                                                ${route?.id === item.id ? "border-accent" : "border-line"}
-                                            `}
-                                        >
-                                            <div className="flex items-start justify-between gap-3.5">
-                                                <p className="text-xl font-bold tracking-tight">{item.name}</p>
-                                                {item.isFull && (
-                                                    <span className="rounded-full bg-warning-wash px-2.5 py-1 text-xs font-medium text-warning-ink">
-                                                        已滿・候補中
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {/* Step 1: Choose Station */}
-                        {step === 1 && route && (
-                            <div className="flex flex-col gap-4">
-                                {/* Header */ }
-                                <h2 className="text-[clamp(24px,3.2vw,32px)] font-bold tracking-tight">
-                                    在哪一站上車？
-                                </h2>
-                                <p className="text-muted">
-                                    {route.name}
-                                    {route.isFull && "（此路線已滿位，選站後將加入候補名單）"}
-                                </p>
-
-                                {/* No stations available */ }
-                                {route.stations.length === 0 && (
-                                    <p className="py-10 text-center text-xl text-muted">這條路線目前沒有開放的站點。</p>
-                                )}
-
-                                {/* Stations list */ }
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    {route.stations.map((s) => (
-                                        <button
-                                            key={s.name}
-                                            type="button"
-                                            onClick={() => chooseStation(s.name)}
-                                            className={`flex items-center justify-between gap-3.5 rounded-card border bg-surface p-5 text-left shadow-card transition ${
-                                                selectedStation === s.name ? "border-accent" : "border-line"
+                                            onClick={() => setSelectedStation(s.name)}
+                                            aria-pressed={selected}
+                                            className={`flex min-h-18 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[18px] border bg-surface px-5 py-3.5 text-left transition ${
+                                                selected
+                                                    ? "border-fg ring-1 ring-fg"
+                                                    : "border-line hover:border-line-strong"
                                             }`}
                                         >
-                                            <div className="flex flex-col gap-1">
-                                                {/* Station label */}
-                                                <p className="text-xl font-medium">{s.name}</p>
-
-                                                {/* Price label */}
-                                                <span className="font-mono text-lg text-accent-ink">
-                                                    {formatPrice(s.monthlyPrice)}/月
+                                            <span className="flex flex-col gap-0.5">
+                                                <span className={`text-lg ${selected ? "font-bold" : "font-medium"}`}>
+                                                    {s.name}
                                                 </span>
-                                            </div>
-                                            <span className="font-mono text-muted">{s.arriveAt}</span>
+                                                <span className="text-sm text-muted">{s.arriveAt} 到站</span>
+                                            </span>
+                                            <span className="font-medium">月費 {formatPrice(s.monthlyPrice)}</span>
                                         </button>
-                                    ))}
+                                    </span>
+                                </li>
+                            );
+                        })}
+
+                        {/* Destination */}
+                        {route.stations.length > 0 && (
+                            <li className="grid grid-cols-[28px_minmax(0,1fr)] gap-x-3 md:gap-x-4">
+                                <span aria-hidden="true" className="relative flex justify-center">
+                                    <span className="absolute top-0 h-6.5 w-0.5 bg-line" />
+                                    <span className="relative mt-6 size-3.5 rounded-[3px] bg-fg" />
+                                </span>
+                                <span className="flex min-h-16 items-center gap-3 px-5">
+                                    <span className="text-[17px] font-bold">鳳山高中</span>
+                                    <span className="text-sm text-muted">抵達學校</span>
+                                </span>
+                            </li>
+                        )}
+                    </ol>
+
+                    <ActionBar>
+                        <button type="button" onClick={() => gotoStep(0)} className={secondaryButton}>
+                            上一步
+                        </button>
+                        <span className="flex flex-1 flex-wrap items-center gap-5 md:flex-none">
+                            {station && (
+                                <span className="hidden text-base text-fg2 md:block">
+                                    {station.name}上車，月費{" "}
+                                    <span className="font-bold text-fg">{formatPrice(station.monthlyPrice)}</span>
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                disabled={!selectedStation || submitting}
+                                onClick={confirmStation}
+                                className={primaryButton}
+                            >
+                                {route.isFull ? (
+                                    submitting ? "送出中…" : "加入候補"
+                                ) : (
+                                    <>
+                                        下一步<span className="hidden md:inline">：選座位</span>
+                                    </>
+                                )}
+                            </button>
+                        </span>
+                    </ActionBar>
+                </>
+            )}
+
+            {/* Step 2: Choose Seat */}
+            {step === 2 && route && selectedStation && (
+                <>
+                    <div className="flex flex-col gap-1 md:gap-1.5">
+                        <h1 className="font-display text-[26px] leading-[1.3] font-bold md:text-[32px] md:leading-tight">
+                            挑一個位子
+                        </h1>
+                        <p className="text-sm text-muted md:text-base">
+                            {route.name}，{selectedStation}上車。點一個空位，跳出確認後就完成登記。
+                        </p>
+                    </div>
+
+                    {/* SeatMap */}
+                    {seatsLoading ? (
+                        <p className="py-10 text-center text-lg text-muted">座位載入中…</p>
+                    ) : seatsError ? (
+                        <div className="flex flex-col items-center gap-4 rounded-3xl border border-line py-12 text-center">
+                            <p className="text-lg text-muted">座位載入失敗，請稍後再試。</p>
+                            <button
+                                type="button"
+                                onClick={() => void loadSeats(route.id)}
+                                className={secondaryButton}
+                            >
+                                重新載入
+                            </button>
+                        </div>
+                    ) : (
+                        <SeatMap
+                            takenSeats={takenSeats}
+                            selected={pendingSeat}
+                            disabled={submitting}
+                            onSelect={setPendingSeat}
+                            onRefresh={() => void loadSeats(route.id)}
+                        />
+                    )}
+
+                    <ActionBar>
+                        <button type="button" onClick={() => gotoStep(1)} className={secondaryButton}>
+                            上一步
+                        </button>
+                    </ActionBar>
+                </>
+            )}
+
+            {/* Step 3: Result */}
+            {step === 3 && result && (
+                <>
+                    {result.ok && result.kind === "booking" ? (
+                        // Booking success
+                        <section className="relative mx-auto flex w-full max-w-[820px] flex-col gap-6 overflow-hidden rounded-[28px] border border-line p-6 md:gap-9 md:p-12">
+                            <span
+                                aria-hidden="true"
+                                className="absolute -top-px -right-px size-28 rounded-bl-full bg-surface2 md:size-40"
+                            />
+
+                            <div className="relative flex flex-col items-start gap-4.5">
+                                <span
+                                    aria-hidden="true"
+                                    className="grid size-14 place-items-center rounded-full bg-fg text-ink md:size-16"
+                                >
+                                    <CheckIcon className="size-7" />
+                                </span>
+                                <h1 className="font-display text-[30px] leading-tight font-bold md:text-[40px]">
+                                    位子留給你了
+                                </h1>
+                                <p className="text-[15px] leading-[1.7] text-muted md:text-[17px]">
+                                    登記完成，電子車票已經放在首頁，隨時可以查看。
+                                </p>
+                            </div>
+
+                            <div className="relative flex flex-wrap items-center gap-6 rounded-card bg-surface2 p-5 md:gap-8 md:p-7">
+                                <dl className="grid min-w-0 flex-[1_1_280px] grid-cols-2 gap-x-6 gap-y-5">
+                                    <div className="flex flex-col gap-1">
+                                        <dt className="text-sm text-muted">路線</dt>
+                                        <dd className="text-xl font-bold">{result.booking.route.name}</dd>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <dt className="text-sm text-muted">上車站</dt>
+                                        <dd className="text-xl font-medium">{result.booking.station}</dd>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <dt className="text-sm text-muted">到站時間</dt>
+                                        <dd className="text-2xl font-semibold">{result.booking.arriveAt || "—"}</dd>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <dt className="text-sm text-muted">月費</dt>
+                                        <dd className="text-xl font-medium">
+                                            {formatPrice(result.booking.monthlyPrice)}
+                                        </dd>
+                                    </div>
+                                </dl>
+                                <div className="flex flex-none flex-col items-center gap-2.5">
+                                    <span className="text-sm text-muted">座位</span>
+                                    <span className="grid size-24 place-items-center rounded-full bg-accent text-[44px] font-semibold text-ink md:size-28 md:text-[50px]">
+                                        {result.booking.seatNumber}
+                                    </span>
                                 </div>
                             </div>
-                        )}
-                        
-                        {/* Step 2: Choose Seat */}
-                        {step === 2 && route && selectedStation && (
-                            <div className="flex flex-col gap-5">
-                                {/* Header */ }
-                                <h2 className="text-[clamp(24px,3.2vw,32px)] font-bold tracking-tight">挑一個位子</h2>
-                                <p className="text-muted">
-                                    {route.name} · {selectedStation}
-                                </p>
 
-                                {/* SeatMap */ }
-                                {seatsLoading ? (
-                                    <p className="py-10 text-center text-xl text-muted">座位載入中…</p>
-                                ) : seatsError ? (
-                                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                                        <p className="text-xl text-muted">座位載入失敗，請稍後再試。</p>
-                                        <button
-                                            type="button"
-                                            onClick={() => void loadSeats(route.id)}
-                                            className="rounded-field border border-line px-5 py-2.5 text-sm font-medium text-muted"
-                                        >
-                                            重新載入
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <SeatMap
-                                        takenSeats={takenSeats}
-                                        disabled={submitting}
-                                        onSelect={handleSelectSeat}
-                                        onRefresh={() => void loadSeats(route.id)}
-                                    />
-                                )}
+                            <div className="relative flex flex-wrap items-center justify-between gap-4">
+                                <span className="text-sm text-muted">開放時間內，可以在首頁取消登記。</span>
+                                <Link href="/" className={`${primaryButton} max-md:w-full`}>
+                                    回首頁看車票
+                                </Link>
                             </div>
-                        )}
+                        </section>
+                    ) : result.ok && result.kind === "waitlist" ? (
+                        // Waitlist join success
+                        <StateCard
+                            icon={
+                                <span className="grid size-16 place-items-center rounded-full bg-fg text-ink">
+                                    <CheckIcon className="size-7" />
+                                </span>
+                            }
+                            title="已加入候補名單"
+                        >
+                            <p>
+                                <span className="font-semibold text-fg">
+                                    {result.entry.route.name}，{result.entry.station}上車，目前候補第{" "}
+                                    {result.entry.position} 位。
+                                </span>
+                                <br />
+                                有座位釋出時會依候補順序自動遞補。
+                            </p>
+                            <Link href="/" className={primaryButton}>
+                                回首頁
+                            </Link>
+                        </StateCard>
+                    ) : (
+                        // Booking fail
+                        <StateCard
+                            icon={
+                                <span className="grid size-16 place-items-center rounded-full bg-accent text-[28px] font-semibold text-ink">
+                                    !
+                                </span>
+                            }
+                            title="登記失敗"
+                        >
+                            <p>這個位子可能剛被其他同學選走了，回去重新挑一個吧。</p>
+                            <button type="button" onClick={retry} className={primaryButton}>
+                                返回重新選位
+                            </button>
+                        </StateCard>
+                    )}
+                </>
+            )}
 
-                        {/* Step 3: Result */}
-                        {step === 3 && result && (
-                            <div className="flex flex-col items-center gap-5 py-2">
-                                {result.ok && result.kind === "booking" ? (
-                                    // Booking success
-                                    <>
-                                        {/* Success message */ }
-                                        <div className="flex flex-col items-center gap-2 text-center">
-                                            <span className="grid size-11 place-items-center rounded-full bg-accent-wash text-2xl text-accent">
-                                                ✓
-                                            </span>
-                                            <h2 className="text-[clamp(21px,3.4vw,28px)] font-bold tracking-tight">
-                                                位子留給你了
-                                            </h2>
-                                        </div>
-
-                                        <Ticket booking={result.booking} rows={rows} />
-
-                                        {/* Link to go back to home */ }
-                                        <Link
-                                            href="/"
-                                            className="rounded-field bg-fg px-5.5 py-3 text-sm font-medium text-bg"
-                                        >
-                                            回首頁看車票
-                                        </Link>
-                                    </>
-                                ) : result.ok && result.kind === "waitlist" ? (
-                                    // Waitlist join success
-                                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                                        <span className="grid size-13 place-items-center rounded-full bg-warning-wash text-2xl text-warning-ink">
-                                            ✓
-                                        </span>
-                                        <h2 className="text-[19px] font-bold tracking-tight">已加入候補名單</h2>
-                                        <p className="text-sm text-muted">
-                                            {result.entry.route.name}・{result.entry.station}
-                                        </p>
-                                        <p className="text-sm font-medium text-accent-ink">
-                                            目前候補第 {result.entry.position} 位
-                                        </p>
-                                        <Link
-                                            href="/"
-                                            className="mt-2 rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
-                                        >
-                                            回首頁
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    // Booking fail
-                                    <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-card bg-surface p-10 text-center shadow-card">
-                                        <span className="grid size-13 place-items-center rounded-full bg-danger-wash text-2xl text-danger-ink">
-                                            ✕
-                                        </span>
-                                        <h2 className="text-[19px] font-bold tracking-tight">登記失敗</h2>
-                                        <button
-                                            type="button"
-                                            onClick={retry}
-                                            className="mt-2 rounded-field bg-fg px-5 py-2.5 text-sm font-medium text-bg"
-                                        >
-                                            返回重新選位
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+            {/* Seat confirmation modal */}
+            {step === 2 && route && selectedStation && pendingSeat !== null && (
+                <div
+                    onClick={() => !submitting && setPendingSeat(null)}
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-fg/30 md:items-center md:p-6"
+                >
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="confirm-title"
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative flex w-full flex-col gap-5 overflow-hidden rounded-t-[28px] bg-surface px-6 pt-7 pb-8 shadow-card-lg max-md:animate-[sheet-up_240ms_ease-out] md:max-w-[420px] md:animate-[pop-in_180ms_ease-out] md:rounded-[28px] md:px-7 md:pt-8 md:pb-6"
+                    >
+                        <span
+                            aria-hidden="true"
+                            className="absolute -bottom-px -left-px size-24 rounded-tr-full bg-surface2"
+                        />
+                        <span className="relative grid size-18 place-items-center rounded-full bg-accent text-[32px] font-semibold text-ink">
+                            {pendingSeat}
+                        </span>
+                        <div className="relative flex flex-col gap-2">
+                            <h2 id="confirm-title" className="text-[22px] font-bold">
+                                確定登記這個位子？
+                            </h2>
+                            <p className="text-[15px] leading-[1.7] text-fg2">
+                                {route.name}，{selectedStation}上車，座位 {pendingSeat} 號。登記後在開放時間內仍可取消。
+                            </p>
+                        </div>
+                        <div className="relative flex flex-col gap-2.5">
+                            <button
+                                type="button"
+                                disabled={submitting}
+                                onClick={() => void submit(pendingSeat)}
+                                className="h-13.5 rounded-full bg-fg font-medium text-ink disabled:opacity-50"
+                            >
+                                {submitting ? "登記中…" : "確定登記"}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={submitting}
+                                onClick={() => setPendingSeat(null)}
+                                className="h-13.5 rounded-full border-[1.5px] border-line bg-surface font-medium disabled:opacity-50"
+                            >
+                                再想想
+                            </button>
+                        </div>
                     </div>
-                )
-            }
-        </>
-    )
+                </div>
+            )}
+        </div>
+    );
 }

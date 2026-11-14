@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { HelpGuide } from "@/components/views/HelpGuide";
-import { HelpIcon } from "@/components/icons";
 
 // 點擊觸發按鈕即可彈出的「使用說明」彈窗，供登入頁等版面較窄的頁面使用
 export function HelpGuideModal() {
@@ -14,14 +13,13 @@ export function HelpGuideModal() {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex gap-1.5 text-muted transition hover:text-fg"
+                className="flex min-h-11 items-center rounded-full px-4 text-[15px] font-medium transition hover:bg-surface2"
             >
-                <HelpIcon className="size-6" />
-                使用說明
+                / 使用說明
             </button>
 
             {open && (
-                <div className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-5">
+                <div className="fixed inset-0 z-50 grid place-items-center bg-fg/30 p-5">
                     {/* Overlay */}
                     <button
                         type="button"
@@ -31,7 +29,7 @@ export function HelpGuideModal() {
                     />
 
                     {/* Panel */}
-                    <div className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-card bg-surface p-7 shadow-card md:p-9">
+                    <div className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-[28px] bg-surface p-7 shadow-card-lg md:p-9">
                         <button
                             type="button"
                             aria-label="關閉"

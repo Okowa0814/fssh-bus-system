@@ -92,7 +92,7 @@ export default function AdminBookingsPage() {
 
     return (
         <div className="flex flex-col gap-5.5">
-            <h1 className="mt-2 text-[clamp(24px,3vw,32px)] font-bold tracking-tight">登記總覽</h1>
+            <h1 className="mt-2 text-[clamp(24px,3vw,32px)] font-bold tracking-tight">登記名單</h1>
 
             {/* Search & Filters */}
             <section className="rounded-card bg-surface p-6 shadow-card">

@@ -149,6 +149,31 @@ export function MoreIcon(props: IconProps) {
     );
 }
 
+export function CheckIcon(props: IconProps) {
+    return (
+        <svg {...base({ strokeWidth: 2.5, ...props })}>
+            <path d="m5 12.5 4.5 4.5L19 7.5" />
+        </svg>
+    );
+}
+
+export function ChevronLeftIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="m15 18-6-6 6-6" />
+        </svg>
+    );
+}
+
+export function ArrowRightIcon(props: IconProps) {
+    return (
+        <svg {...base(props)}>
+            <path d="M5 12h14" />
+            <path d="m13 6 6 6-6 6" />
+        </svg>
+    );
+}
+
 export function RefreshIcon(props: IconProps) {
     return (
         <svg {...base(props)}>
