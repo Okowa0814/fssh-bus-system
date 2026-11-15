@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     output: "standalone",
     poweredByHeader: false,
     // 允許區網其他裝置存取開發伺服器（生產環境的 standalone 輸出不受影響）
-    allowedDevOrigins: ["192.168.50.135"],
+    allowedDevOrigins: ["192.168.50.*"],
     serverExternalPackages: ["@prisma/adapter-pg", "pg", "ioredis", "google-auth-library"],
     async headers() {
         return [
