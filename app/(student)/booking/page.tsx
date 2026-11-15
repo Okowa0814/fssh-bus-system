@@ -13,7 +13,7 @@ import type {
     WaitlistEntryDto,
 } from "@/lib/types";
 
-import { SeatMap, Stepper } from "@/components";
+import { PageLoader, SeatMap, Stepper, useBookingNav } from "@/components";
 import { api, ApiError } from "@/services/api";
 import { formatPrice } from "@/lib/pricing";
 
@@ -291,8 +291,12 @@ export default function BookingPage() {
         { label: "完成", sub: succeeded ? "已完成" : "確認後完成" },
     ];
 
+    // 無法登記（未開放、已登記、候補中、已完成）時顯示導覽列；登記流程中隱藏，專注在選位
+    const canBook = !!window_?.open && !existing && !existingWaitlist && !succeeded;
+    useBookingNav(!loading && !canBook);
+
     if (loading) {
-        return <p className="py-16 text-center text-lg text-muted">載入中…</p>;
+        return <PageLoader />;
     }
 
     // Not in booking time

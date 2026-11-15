@@ -6,6 +6,7 @@ export * from "./views/HelpGuideModal";
 export * from "./views/RoutesView";
 export * from "./views/RoutesModal";
 export * from "./NotFoundCard";
+export * from "./PageLoader";
 export * from "./SeatMap";
 export * from "./StatusChip";
 export * from "./Ticket";
