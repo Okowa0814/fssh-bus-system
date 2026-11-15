@@ -44,25 +44,14 @@ list_routes() {
     echo ""
     echo "=== 目前路線與已登記人數 ==="
     psql_exec -c "
-        SELECT r.id, r.name, r.\"isFull\",
+        SELECT r.id, r.name,
+               count(b.id) >= 42 AS is_full,
                count(b.id) AS booked,
                42 - count(b.id) AS free_seats
         FROM \"Route\" r
         LEFT JOIN \"Booking\" b ON b.\"routeId\" = r.id
-        GROUP BY r.id, r.name, r.\"isFull\"
+        GROUP BY r.id, r.name
         ORDER BY r.id;
-    "
-}
-
-# 依 isFull 定義（count(*) >= 42）重新計算單一路線的 isFull 旗標，
-# 保持與 server/booking.ts 的 markRouteFullIfNeeded 邏輯一致
-sync_is_full() {
-    local route_id="$1"
-    psql_exec -c "
-        UPDATE \"Route\" SET \"isFull\" = (
-            SELECT count(*) >= 42 FROM \"Booking\" WHERE \"routeId\" = ${route_id}
-        )
-        WHERE id = ${route_id};
     "
 }
 
@@ -128,7 +117,6 @@ fill_route() {
         CROSS JOIN station;
     "
 
-    sync_is_full "$route_id"
     echo "完成。"
     list_routes
 }
@@ -146,7 +134,7 @@ clear_test_data() {
     psql_exec -c "DELETE FROM \"WaitlistEntry\" WHERE \"studentId\" LIKE 'TEST%';"
     psql_exec -c "DELETE FROM \"User\" WHERE \"studentId\" LIKE 'TEST%';"
 
-    echo "已清除所有測試資料。（isFull 未自動更新，如需同步請自行執行 sync_is_full）"
+    echo "已清除所有測試資料。"
     list_routes
 }
 
