@@ -12,7 +12,7 @@ RUN npm install
 FROM deps AS dev
 ENV NODE_ENV=development
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && npm run dev"]
+CMD ["sh", "-c", "npx prisma db push && npx prisma generate && npm run dev"]
 
 # Build Environment
 FROM base AS builder
