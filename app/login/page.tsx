@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api, setToken, decodeToken, ApiError } from "@/services/api";
 import type { LoginResponse, PublicStatsDto } from "@/lib/types";
 import { GoogleLoginButton, HelpGuideModal, RoutesModal } from "@/components/";
-import { BadgeIcon, MapPinIcon } from "@/components/icons";
+import { BadgeIcon, HelpIcon } from "@/components/icons";
 
 const tile = "relative aspect-square overflow-hidden rounded-md";
 
@@ -134,9 +134,9 @@ export default function LoginPage() {
                 </nav>
             </header>
 
-            <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-wrap items-center gap-x-18 gap-y-10 px-5 pt-4 pb-10 md:px-14 md:pt-6 md:pb-14">
+            <main className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col gap-10 px-5 pt-6 pb-10 md:px-14 md:pt-10 md:pb-14 lg:flex-row lg:items-center lg:gap-18 lg:pt-6">
                 {/* Left: login */}
-                <section className="flex min-w-0 flex-[1_1_440px] flex-col gap-7 md:max-w-[520px] md:gap-9">
+                <section className="flex w-full min-w-0 flex-col gap-7 md:max-w-[520px] md:gap-9 lg:flex-1">
                     <div className="flex flex-col gap-4 md:gap-5">
                         <h1 className="font-display text-[clamp(36px,4.2vw,60px)] leading-[1.18] font-bold tracking-[-0.01em]">
                             搭校車，
@@ -144,7 +144,7 @@ export default function LoginPage() {
                             先登記座位。
                         </h1>
                         <p className="max-w-[26em] text-base leading-[1.75] text-muted md:text-lg">
-                            用學校 Google 帳號登入，選路線、挑座位，完成後就有自己的電子車票。
+                            登入，選路線、挑座位。
                         </p>
                     </div>
 
@@ -160,19 +160,15 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Routes hint */}
+                    {/* First-time hint */}
                     <div className="flex items-center justify-between gap-4 rounded-[20px] bg-surface2 px-6 py-5.5">
                         <span className="flex min-w-0 flex-1 flex-col gap-1">
-                            <span className="text-[17px] font-bold">路線與時間</span>
+                            <span className="text-[17px] font-bold">第一次使用嗎？</span>
                             <span className="text-sm leading-relaxed text-muted">
-                                {stats && stats.routeCount > 0
-                                    ? `目前有 ${stats.routeCount} 條路線、${stats.totalSeats} 個座位。`
-                                    : ""}
-                                <br />
-                                可以點選上方的「查看路線」，看各路線的停靠站與到站時間。
+                            點選上方「使用說明」，了解登記與搭車的完整步驟。
                             </span>
                         </span>
-                        <MapPinIcon className="size-7 shrink-0 text-fg" />
+                        <HelpIcon className="size-7 shrink-0 text-fg" />
                     </div>
 
                     {/* Dev Login Section (only visible in development mode) */}
@@ -208,7 +204,7 @@ export default function LoginPage() {
                 </section>
 
                 {/* Right: geometric bus */}
-                <section className="hidden min-w-0 flex-[1_1_480px] md:flex">
+                <section className="hidden min-w-0 flex-1 justify-end lg:flex">
                     <BusIllustration />
                 </section>
             </main>
