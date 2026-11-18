@@ -69,7 +69,7 @@ export function RoutesView() {
             {loading && <p className="py-10 text-center text-sm text-muted">載入中…</p>}
 
             {!loading && routes.length === 0 && (
-                <p className="rounded-card bg-surface p-10 text-center text-lg text-muted shadow-card">
+                <p className="py-10 text-center text-lg text-muted">
                     目前沒有開放登記的路線。
                 </p>
             )}
@@ -133,15 +133,15 @@ export function RoutesView() {
                         >
                             <div
                                 key={route.id}
-                                className={`rounded-card bg-surface p-6 shadow-card ${
+                                className={`py-2 ${
                                     direction === "right"
                                         ? "animate-[slide-in-from-right_260ms_ease-out]"
                                         : "animate-[slide-in-from-left_260ms_ease-out]"
                                 }`}
                             >
                                 {route.stations.map((station, i) => {
-                                    const last = i === route.stations.length - 1;
-                                    const edge = i === 0 || last;
+                                    // 終點固定為「鳳山高中」（僅顯示用，不是站點），所以只有首站與終點為強調色
+                                    const edge = i === 0;
                                     return (
                                         <div key={station.name} className="flex gap-4">
                                             {/* Timeline */}
@@ -151,17 +151,17 @@ export function RoutesView() {
                                                         edge ? "bg-accent" : "bg-muted opacity-50"
                                                     }`}
                                                 />
-                                                {!last && <span className="w-px flex-1 bg-line" />}
+                                                <span className="w-px flex-1 bg-line" />
                                             </div>
 
                                             {/* Station Info */}
                                             <div
-                                                className={`flex flex-1 items-center justify-between gap-3 ${last ? "pb-0" : "pb-6"}`}
+                                                className="flex flex-1 items-center justify-between gap-3 pb-6"
                                             >
                                                 <div className="mr-8 flex flex-col gap-1">
                                                     {/* Station label */}
                                                     <p
-                                                        className={`font-mono text-lg md:text-xl ${edge ? "font-medium" : "text-muted"}`}
+                                                        className={`font-mono text-lg md:text-xl ${edge ? "font-medium" : ""}`}
                                                     >
                                                         {station.name}
                                                     </p>
@@ -176,6 +176,19 @@ export function RoutesView() {
                                         </div>
                                     );
                                 })}
+
+                                {/* Destination：每條路線的終點固定為鳳山高中 */}
+                                {route.stations.length > 0 && (
+                                    <div className="flex gap-4">
+                                        <div className="flex flex-col items-center">
+                                            <span className="size-3 shrink-0 rounded-full bg-accent" />
+                                        </div>
+                                        <div className="flex flex-1 items-center justify-between gap-3">
+                                            <p className="font-mono text-lg font-medium md:text-xl">鳳山高中</p>
+                                            <p className="font-mono text-lg text-muted">抵達學校</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

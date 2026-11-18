@@ -3,9 +3,11 @@
 import { useState } from "react";
 
 import { HelpGuide } from "@/components/views/HelpGuide";
+import { ScrollPanel } from "@/components/views/ScrollPanel";
 
 // 點擊觸發按鈕即可彈出的「使用說明」彈窗，供登入頁等版面較窄的頁面使用
-export function HelpGuideModal() {
+// variant: "nav" 為 header 文字導覽；"pill" 為手機版登入頁的並排膠囊按鈕
+export function HelpGuideModal({ variant = "nav" }: { variant?: "nav" | "pill" }) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -13,9 +15,13 @@ export function HelpGuideModal() {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex min-h-11 items-center rounded-full px-4 text-[15px] font-medium transition hover:bg-surface2"
+                className={
+                    variant === "pill"
+                        ? "flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-line text-[15px] font-medium transition hover:border-fg"
+                        : "flex min-h-11 items-center rounded-full px-4 text-[15px] font-medium transition hover:bg-surface2"
+                }
             >
-                / 使用說明
+                {variant === "nav" && "/ "}使用說明
             </button>
 
             {open && (
@@ -29,18 +35,9 @@ export function HelpGuideModal() {
                     />
 
                     {/* Panel */}
-                    <div className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-[28px] bg-surface p-7 shadow-card-lg md:p-9">
-                        <button
-                            type="button"
-                            aria-label="關閉"
-                            onClick={() => setOpen(false)}
-                            className="absolute top-6 right-6 text-xl text-muted transition hover:text-fg"
-                        >
-                            ✕
-                        </button>
-
+                    <ScrollPanel onClose={() => setOpen(false)} hintLabel="向下捲動，還有更多步驟">
                         <HelpGuide />
-                    </div>
+                    </ScrollPanel>
                 </div>
             )}
         </>

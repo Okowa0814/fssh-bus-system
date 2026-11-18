@@ -101,6 +101,14 @@ body {
     }
 }
 
+/* 隱藏捲軸但保留捲動：圓角彈窗裡的方形捲軸會在圓角處被切出弧形，看起來像多一層內圓角 */
+@utility no-scrollbar {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 @keyframes sheet-up {
     from {
         transform: translateY(100%);

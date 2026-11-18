@@ -45,19 +45,43 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
                 hd: process.env.NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN,
             });
             containerRef.current.innerHTML = "";
+
+            // 手機版：按鈕撐滿容器寬度（Google 限制 200–400）；桌機維持 280
+            const isMobile = window.matchMedia("(max-width: 767px)").matches;
+            const width = isMobile
+                ? Math.min(400, Math.max(200, Math.floor(containerRef.current.clientWidth)))
+                : 280;
+
             window.google.accounts.id.renderButton(containerRef.current, {
                 theme: "filled_black",
                 size: "large",
                 shape: "pill",
-                width: 280,
+                width,
                 text: "signin_with",
                 locale: "zh_TW",
             });
         };
 
+        // 容器寬度改變（轉向、縮放視窗）時重畫按鈕，讓手機版的寬度跟著更新
+        let lastWidth = containerRef.current?.clientWidth ?? 0;
+        let timer: number | undefined;
+        const observer = new ResizeObserver(() => {
+            const width = containerRef.current?.clientWidth ?? 0;
+
+            if (width === lastWidth) return;
+            lastWidth = width;
+            window.clearTimeout(timer);
+            timer = window.setTimeout(render, 150);
+        });
+        if (containerRef.current) observer.observe(containerRef.current);
+        const stopObserving = () => {
+            observer.disconnect();
+            window.clearTimeout(timer);
+        };
+
         if (window.google) {
             render();
-            return;
+            return stopObserving;
         }
 
         let script = document.querySelector<HTMLScriptElement>(`script[src="${GSI_SRC}"]`);
@@ -71,12 +95,15 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
         script.addEventListener("error", () =>
             setError("Google 登入服務載入失敗，請檢查網路後重新整理"),
         );
-        return () => script?.removeEventListener("load", render);
+        return () => {
+            script?.removeEventListener("load", render);
+            stopObserving();
+        };
     }, []);
 
     if (error) {
         alert(error);
         return;
     }
-    return <div ref={containerRef} className="flex min-h-11 justify-start" />;
+    return <div ref={containerRef} className="flex min-h-11 justify-center md:justify-start" />;
 }

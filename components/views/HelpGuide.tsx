@@ -13,7 +13,7 @@ export function HelpGuide() {
             <h1 className="mt-2 text-[clamp(32px,4vw,48px)] leading-tight font-bold tracking-tight">
                 第一次登記？
                 <br />
-                星期一分鐘就搞定。
+                一分鐘就搞定。
             </h1>
 
             <div className="flex flex-col">
