@@ -31,6 +31,7 @@ services:
             target: runner
             args:
                 NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+                NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN: ${NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN}
         container_name: fssh-bus-nextjs
         restart: unless-stopped
         env_file: .env

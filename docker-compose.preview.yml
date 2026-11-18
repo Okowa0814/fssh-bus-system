@@ -1,3 +1,5 @@
+# 本機預覽環境：使用 build 之後的產物啟動（next start），不掛載原始碼、不即時編譯、沒有熱重載
+# 資料庫沿用原本開發環境的容器名稱與 ./data/dev-db，所以既有的路線與使用者資料都在
 services:
     db:
         image: postgres:18-alpine
@@ -8,10 +10,8 @@ services:
             POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             POSTGRES_DB: ${POSTGRES_DB}
         ports:
-            - "5432:5432"
+            - "127.0.0.1:5432:5432"
         volumes:
-            # PostgreSQL 18+ 官方映像檔改成掛載到 /var/lib/postgresql（非 .../data），
-            # 資料實際存在版本相關子目錄，見 https://github.com/docker-library/postgres/pull/1259
             - ./data/dev-db:/var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -22,16 +22,15 @@ services:
     nextjs:
         build:
             context: .
-            target: dev
-        container_name: fssh-bus-nextjs-dev
+            target: preview
+            args:
+                NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+                NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN: ${NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN}
+        container_name: fssh-bus-nextjs-preview
         restart: unless-stopped
         env_file: .env
         ports:
             - "3000:3000"
-        volumes:
-            - .:/app
-            - /app/node_modules
-            - /app/.next
         depends_on:
             db:
                 condition: service_healthy

@@ -97,11 +97,11 @@ fssh-bus/
 ├── services/                   # 前端呼叫 API 的封裝（services/api.ts）
 ├── schema.prisma               # 資料庫 Schema
 ├── nginx.conf                  # Nginx 主設定
-├── Dockerfile                  # 多階段建置（dev / builder / migrate / runner）
+├── Dockerfile                  # 多階段建置（builder / preview / migrate / runner）
 ├── docker-compose.yml           # 正式環境（nginx + nextjs + db + certbot）
-├── docker-compose.dev.yml       # 開發環境（熱重載、掛載原始碼）
+├── docker-compose.preview.yml   # 本機預覽環境（使用 build 後的產物，無熱重載）
 └── scripts/
-    ├── dev.sh                   # 一鍵啟動開發環境
+    ├── preview.sh               # 一鍵建置並啟動本機預覽環境
     └── deploy.sh                 # 一鍵部署正式環境
 ```
 
@@ -121,7 +121,7 @@ fssh-bus/
 
 ## 🔐 環境變數
 
-`scripts/dev.sh` / `scripts/deploy.sh` 會在找不到 `.env` 時自動幫你複製並產生隨機密碼 / 密鑰：
+`scripts/preview.sh` / `scripts/deploy.sh` 會在找不到 `.env` 時自動幫你複製並產生隨機密碼 / 密鑰：
 
 
 | 變數 | 說明 |
@@ -137,12 +137,12 @@ fssh-bus/
 
 ## 🚀 快速啟動
 
-### 方法一：Docker 開發環境（推薦）
+### 方法一：Docker 預覽環境（推薦）
 
-一鍵啟動 `db + nextjs`（dev target，熱重載、掛載原始碼、啟動時自動 `prisma db push`）：
+一鍵建置並啟動 `db + nextjs`（preview target：先 `next build`，再用建置後的產物 `next start`，不掛載原始碼、沒有熱重載，啟動時自動 `prisma db push`）。改了程式後重新執行一次即可重新建置：
 
 ```bash
-./scripts/dev.sh
+./scripts/preview.sh
 ```
 
 首次執行會自動建立 `.env` 並隨機產生 `POSTGRES_PASSWORD` / `JWT_SECRET`。登入頁有「測試登入」按鈕可略過 Google OAuth 直接測試；若要測試真實 Google 登入，需自行到 GCP Console 建立 OAuth 用戶端並填入 `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID`。
@@ -151,7 +151,7 @@ fssh-bus/
 
 ### 方法二：本機直接執行（不透過 Docker 跑 Next.js）
 
-需要自行準備可連線的 PostgreSQL（例如用 `docker compose -f docker-compose.dev.yml up db -d` 只啟動資料庫服務）。
+需要自行準備可連線的 PostgreSQL（例如用 `docker compose -f docker-compose.preview.yml up db -d` 只啟動資料庫服務）。
 
 ```bash
 npm install          # 安裝套件（會自動執行 prisma generate）

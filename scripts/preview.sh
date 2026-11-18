@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# 開發環境部署腳本
-# 啟動 db + nextjs（dev target：熱重載、掛載原始碼、自動 prisma db push）
+# 本機預覽環境部署腳本
+# 先 next build，再用建置後的產物啟動（next start），不讀原始碼、沒有即時編譯、沒有熱重載
+# 改了程式要看到變化，請重新執行這支腳本（會重新 build）
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,9 +16,9 @@ if [ ! -f .env ]; then
     echo "登入頁有「測試登入」按鈕可略過 Google OAuth；若要測試真的 Google 登入，請自行修改 GOOGLE_CLIENT_ID / NEXT_PUBLIC_GOOGLE_CLIENT_ID。"
 fi
 
-echo "啟動開發環境（docker-compose.dev.yml）..."
-docker compose -f docker-compose.dev.yml up --build -d "$@"
+echo "建置並啟動預覽環境（docker-compose.preview.yml）..."
+docker compose -f docker-compose.preview.yml up --build -d --remove-orphans "$@"
 
 echo ""
 echo "服務狀態："
-docker compose -f docker-compose.dev.yml ps
+docker compose -f docker-compose.preview.yml ps

@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ ! -f .env ]; then
-    echo "找不到 .env，請先執行 scripts/dev.sh 或 scripts/deploy.sh 產生 .env"
+    echo "找不到 .env，請先執行 scripts/preview.sh 或 scripts/deploy.sh 產生 .env"
     exit 1
 fi
 
@@ -15,12 +15,12 @@ source .env
 set +a
 
 echo "=== 選擇目標環境 ==="
-echo "1) 開發環境 (docker-compose.dev.yml / fssh-bus-db-dev)"
+echo "1) 預覽環境 (docker-compose.preview.yml / fssh-bus-db-dev)"
 echo "2) 正式環境 (docker-compose.yml / fssh-bus-db)"
 read -rp "請輸入數字: " env_choice
 
 case "$env_choice" in
-    1) COMPOSE_FILE="docker-compose.dev.yml" ;;
+    1) COMPOSE_FILE="docker-compose.preview.yml" ;;
     2) COMPOSE_FILE="docker-compose.yml" ;;
     *) echo "無效選項"; exit 1 ;;
 esac

@@ -8,19 +8,24 @@ COPY schema.prisma ./schema.prisma
 COPY prisma.config.ts ./prisma.config.ts
 RUN npm install
 
-# Dev Environment
-FROM deps AS dev
-ENV NODE_ENV=development
-EXPOSE 3000
-CMD ["sh", "-c", "npx prisma db push && npx prisma generate && npm run dev"]
-
 # Build Environment
 FROM base AS builder
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN
+ENV NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN=$NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
+
+# Preview Environment：建置後的產物直接啟動（next build + next start），沒有即時編譯，
+# 用來在本機檢查接近正式環境的速度；改程式後需重新 build
+FROM builder AS preview
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+EXPOSE 3000
+CMD ["sh", "-c", "npx prisma db push && npx next start"]
 
 # Sync database schema
 FROM base AS migrate
