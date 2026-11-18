@@ -13,7 +13,6 @@ function resolveDatabaseUrl(): string {
 
 export default defineConfig({
     schema: "schema.prisma",
-    engine: "classic",
     datasource: {
         url: resolveDatabaseUrl(),
     },
