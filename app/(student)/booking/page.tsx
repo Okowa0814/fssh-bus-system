@@ -66,7 +66,7 @@ function ActionBar({ children }: { children: ReactNode }) {
 }
 
 const primaryButton =
-    "flex h-13.5 flex-1 items-center justify-center rounded-full bg-fg px-8 font-medium text-ink transition disabled:bg-faint md:h-14 md:flex-none";
+    "flex h-13.5 flex-1 items-center justify-center rounded-full bg-fg px-8 font-medium whitespace-nowrap text-ink transition disabled:bg-faint md:h-14 md:flex-none";
 const secondaryButton =
     "flex h-13.5 flex-1 items-center justify-center rounded-full border-[1.5px] border-line bg-surface px-5 font-medium transition hover:border-fg md:h-12 md:flex-none md:text-[15px]";
 
@@ -291,9 +291,10 @@ export default function BookingPage() {
         { label: "完成", sub: succeeded ? "已完成" : "確認後完成" },
     ];
 
-    // 無法登記（未開放、已登記、候補中、已完成）時顯示導覽列；登記流程中隱藏，專注在選位
+    // 載入中：登記頁標題列 + 導覽列；登記流程中：隱藏導覽列專注在選位；
+    // 無法登記（未開放、已登記、候補中、已完成）：改回一般標題列與導覽
     const canBook = !!window_?.open && !existing && !existingWaitlist && !succeeded;
-    useBookingNav(!loading && !canBook);
+    useBookingNav(loading ? "loading" : canBook ? "booking" : "blocked");
 
     if (loading) {
         return <PageLoader />;
@@ -675,7 +676,7 @@ export default function BookingPage() {
 
                             <div className="relative flex flex-wrap items-center justify-between gap-4">
                                 <span className="text-sm text-muted">開放時間內，可以在首頁取消登記。</span>
-                                <Link href="/" className={`${primaryButton} max-md:w-full`}>
+                                <Link href="/" className={`${primaryButton} max-md:w-full max-md:flex-none`}>
                                     回首頁看車票
                                 </Link>
                             </div>
