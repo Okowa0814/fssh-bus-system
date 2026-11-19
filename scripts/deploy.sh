@@ -32,5 +32,19 @@ if [ "$SKIP_CONFIRM" = false ]; then
 fi
 
 echo ""
+echo "檢查 nginx.conf 語法..."
+docker run --rm \
+    --add-host nextjs:127.0.0.1 \
+    -v "$PWD/nginx.conf:/etc/nginx/nginx.conf:ro" \
+    nginx:1.27-alpine nginx -t
+
+echo ""
+echo "建置並啟動服務..."
+docker compose -f docker-compose.yml up -d --build
+
+echo ""
 echo "服務狀態："
 docker compose -f docker-compose.yml ps
+
+echo ""
+echo "提醒：若修改過 nginx.conf 或剛更新 SSL 憑證，可執行 docker exec fssh-bus-nginx nginx -s reload 重新載入。"
