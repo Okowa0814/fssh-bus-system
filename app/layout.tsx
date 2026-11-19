@@ -3,7 +3,7 @@ import { Noto_Sans_TC, Outfit } from "next/font/google";
 import "./globals.css";
 
 // Define Fonts
-// Font write b.c. Next.js wiil downlaod and package the font files into the build output, so that the fonts can be used offline and without relying on external services.
+// Fonts are loaded via next/font because Next.js will download and package the font files into the build output, so that the fonts can be used offline and without relying on external services.
 const notoSansTC = Noto_Sans_TC({
     subsets: ["latin"],
     weight: ["400", "500", "700"],
