@@ -143,28 +143,6 @@ export default function LoginPage() {
         }
     };
 
-    // For dev
-    const handleDevLogin = async (admin: boolean, id?: string) => {
-        setLoading(true);
-
-        try {
-            const query = new URLSearchParams({ admin: admin ? "1" : "0" });
-
-            if (id) query.set("id", id);
-
-            const result = await api<LoginResponse>(`/api/auth/dev-login?${query.toString()}`);
-
-            setToken(result.token);
-            router.replace(result.user.isAdmin ? "/admin" : "/");
-        } catch (error) {
-            alert(error instanceof ApiError ? error.message : "登入失敗，請稍後再試");
-            setLoading(false);
-        }
-    };
-
-    const devButton =
-        "rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] text-fg2 transition hover:border-fg disabled:opacity-50";
-
     return (
         <div className="flex min-h-dvh flex-col bg-[#f3f4f6] md:bg-bg">
             {/* Header */}
@@ -238,36 +216,6 @@ export default function LoginPage() {
                         <HelpIcon className="size-7 shrink-0 text-fg" />
                     </div>
 
-                    {/* Dev Login Section (only visible in development mode) */}
-                    {process.env.NODE_ENV !== "production" && (
-                        <div className="flex flex-wrap items-center gap-2 rounded-[14px] border border-dashed border-line-strong px-3.5 py-3">
-                            <span className="w-full text-xs text-muted">開發測試用，正式環境不會顯示</span>
-                            <button
-                                type="button"
-                                disabled={loading}
-                                onClick={() => handleDevLogin(false)}
-                                className={devButton}
-                            >
-                                學生 test01
-                            </button>
-                            <button
-                                type="button"
-                                disabled={loading}
-                                onClick={() => handleDevLogin(false, "2")}
-                                className={devButton}
-                            >
-                                學生 test02
-                            </button>
-                            <button
-                                type="button"
-                                disabled={loading}
-                                onClick={() => handleDevLogin(true)}
-                                className={devButton}
-                            >
-                                管理員 admin
-                            </button>
-                        </div>
-                    )}
                 </section>
 
                 {/* Right: geometric bus(only Desktop) */}
