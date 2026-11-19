@@ -10,10 +10,14 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string): void {
+    if (typeof window === "undefined") return;
+
     window.localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearToken(): void {
+    if (typeof window === "undefined") return;
+
     window.localStorage.removeItem(TOKEN_KEY);
 }
 
@@ -23,15 +27,30 @@ export function decodeToken(): TokenPayload | null {
     if (!token) return null;
 
     try {
-        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-        const payload = JSON.parse(
-            decodeURIComponent(
-                Array.from(atob(base64), (c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join(""),
-            ),
-        ) as TokenPayload & { sub?: string };
+        // A JWT must have exactly 3 parts: header.payload.signature
+        const parts = token.split(".");
 
-        // Check if the token has expired or is invalid
-        if (!payload.sub || payload.exp * 1000 <= Date.now()) {
+        if (parts.length !== 3) {
+            clearToken();
+            return null;
+        }
+
+        // Base64URL -> standard Base64, and pad with '=' up to a multiple of 4
+        const base64Url = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+        
+        const base64 = base64Url + padding;
+
+        // Decode one character at a time to avoid garbled Chinese or special characters"
+        // The decodeURIComponent trick is used to handle UTF-8 characters correctly
+        const jsonPayload = decodeURIComponent(
+            Array.from(atob(base64), (c) => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join(""),
+        );
+        
+        const payload = JSON.parse(jsonPayload) as TokenPayload;
+
+        // Check required fields and expiry (a missing exp must not count as "not expired")
+        if (!payload.sub || typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now()) {
             clearToken();
             return null;
         }
@@ -64,9 +83,9 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
 
     if (token) headers.Authorization = `Bearer ${token}`;
     
+    // undefined equals Option is GET
     if (options.body !== undefined) headers["Content-Type"] = "application/json";
     
-
     let response: Response;
     try {
         response = await fetch(path, {
