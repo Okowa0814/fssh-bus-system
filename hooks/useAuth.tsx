@@ -36,8 +36,14 @@ function useAuthGuard(role: "student" | "admin") {
     useEffect(() => {
         const payload = decodeToken();
 
-        // Not logged in, redirect to login page
+        // Not logged in
         if (!payload) {
+            // Admin page -> show 404, so unauthenticated visitors can't tell /admin exists
+            if (role === "admin") {
+                setStatus("denied");
+                return;
+            }
+            // Student page -> redirect to login page
             router.replace("/login");
             return;
         }
@@ -71,7 +77,7 @@ export function useStudentGuard() {
     return useAuthGuard("student");
 }
 
-/** 供 app/admin layout 使用：未登入導回登入頁，非管理員帳號視為 denied（頁面顯示 404） */
+/** 供 app/admin layout 使用：未登入或非管理員帳號一律視為 denied（頁面顯示 404，不洩漏 /admin 存在） */
 export function useAdminGuard() {
     return useAuthGuard("admin");
 }

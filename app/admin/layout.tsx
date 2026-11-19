@@ -2,13 +2,13 @@
 
 import { useAdminGuard, AuthProvider } from "@/hooks/useAuth";
 import { AppShell } from "@/components/AppShell";
-import { NotFoundCard } from "@/components/NotFoundCard";
+import { notFound } from "next/navigation";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { user, status, logout } = useAdminGuard();
 
     if (status === "denied") {
-        return <NotFoundCard />;
+        notFound();
     }
     if (status !== "ready" || !user) {
         return null;
