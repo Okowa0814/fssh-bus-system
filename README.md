@@ -62,7 +62,7 @@ Next.js（App Router + Route Handlers）
 ```
 
 ### 🔑 登入流程
-1. 前端取得 Google 憑證（`GoogleLoginButton`），或開發模式使用「測試登入」（`/api/auth/dev-login`）略過真實 Google 驗證
+1. 前端取得 Google 憑證（`GoogleLoginButton`）
 2. 後端 `/api/auth/google` 驗證憑證網域是否為 `ALLOWED_EMAIL_DOMAIN`，並以學號 Upsert `User` 資料
 3. 若 email 在 `ADMIN_EMAILS` 名單中，自動標記為管理員
 4. 簽發 30 分鐘效期的 JWT，前端存於 `localStorage`，之後每次請求帶 `Authorization: Bearer <token>`
@@ -86,7 +86,7 @@ fssh-bus/
 │   ├── admin/                # 管理端頁面（登記管理、路線管理）
 │   ├── login/                 # 登入頁
 │   └── api/
-│       ├── auth/              # Google 登入、開發測試登入
+│       ├── auth/              # Google 登入
 │       ├── public/            # 免登入可查詢的公開資訊（路線、統計）
 │       ├── student/           # 學生端 API（登記、座位、我的資料）
 │       └── admin/              # 管理端 API（登記管理、路線管理、開放時間）
@@ -145,7 +145,7 @@ fssh-bus/
 ./scripts/preview.sh
 ```
 
-首次執行會自動建立 `.env` 並隨機產生 `POSTGRES_PASSWORD` / `JWT_SECRET`。登入頁有「測試登入」按鈕可略過 Google OAuth 直接測試；若要測試真實 Google 登入，需自行到 GCP Console 建立 OAuth 用戶端並填入 `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID`。
+首次執行會自動建立 `.env` 並隨機產生 `POSTGRES_PASSWORD` / `JWT_SECRET`。登入需要真實的 Google 登入，請自行到 GCP Console 建立 OAuth 用戶端並填入 `GOOGLE_CLIENT_ID` / `NEXT_PUBLIC_GOOGLE_CLIENT_ID`。
 
 啟動後可於 <http://localhost:3000> 開啟。
 
@@ -202,7 +202,6 @@ gunzip -c ./data/backups/<檔名>.sql.gz | docker compose exec -T db psql -U ${P
 | 路徑 | 說明 |
 |---|---|
 | `POST /api/auth/google` | Google 登入，驗證網域並簽發 JWT |
-| `POST /api/auth/dev-login` | 開發用測試登入（略過 Google 驗證） |
 | `GET /api/public/routes` | 公開查詢所有路線（免登入），含 `isFull` 滿位狀態 |
 | `GET /api/public/stats` | 公開統計資訊（路線數、剩餘座位等） |
 | `GET /api/student/me` | 取得目前登入學生資料、有效登記與候補紀錄 |

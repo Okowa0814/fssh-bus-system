@@ -13,7 +13,7 @@ if [ ! -f .env ]; then
     sed -i "s#請改成高強度密碼#${DB_PASSWORD}#g" .env
     sed -i "s#請改成隨機密鑰#${JWT_SECRET}#g" .env
     echo "已產生 .env，POSTGRES_PASSWORD / JWT_SECRET 已自動隨機產生。"
-    echo "登入頁有「測試登入」按鈕可略過 Google OAuth；若要測試真的 Google 登入，請自行修改 GOOGLE_CLIENT_ID / NEXT_PUBLIC_GOOGLE_CLIENT_ID。"
+    echo "請自行修改 .env 的 GOOGLE_CLIENT_ID / NEXT_PUBLIC_GOOGLE_CLIENT_ID 以啟用 Google 登入。"
 fi
 
 echo "建置並啟動預覽環境（docker-compose.preview.yml）..."
