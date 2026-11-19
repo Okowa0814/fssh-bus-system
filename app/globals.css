@@ -54,12 +54,12 @@
     --color-danger-wash: var(--danger-wash);
     /* 拉丁字與數字用 Outfit，中文落到 Noto Sans TC */
     --font-sans:
-        var(--font-outfit), var(--font-noto-sans-tc), "PingFang TC", system-ui, sans-serif;
+        var(--font-outfit), var(--font-noto-sans-tc), system-ui, sans-serif;
     /* 大標題以 Noto Sans TC 為主 */
-    --font-display: var(--font-noto-sans-tc), "PingFang TC", system-ui, sans-serif;
+    --font-display: var(--font-noto-sans-tc), system-ui, sans-serif;
     /* 新設計不使用等寬字：既有的 font-mono 一律改用同一組字體，數字等寬對齊 */
     --font-mono:
-        var(--font-outfit), var(--font-noto-sans-tc), "PingFang TC", system-ui, sans-serif;
+        var(--font-outfit), var(--font-noto-sans-tc), system-ui, sans-serif;
     /* 卡片改以 1px 邊框呈現（用 ring 形式的 shadow，既有的 shadow-card 自動套用） */
     --shadow-card: 0 0 0 1px var(--line);
     --shadow-card-lg: 0 24px 64px -24px rgba(28, 28, 30, 0.35);

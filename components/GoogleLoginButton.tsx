@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// TypeScript declaration for the Google Identity Services API
 declare global {
     interface Window {
         google?: {
@@ -19,7 +20,7 @@ declare global {
     }
 }
 
-const GSI_SRC = "https://accounts.google.com/gsi/client";
+const GIS_SRC = "https://accounts.google.com/gsi/client";
 
 /** Google Identity Services 一鍵登入按鈕 */
 export function GoogleLoginButton({ onCredential }: { onCredential: (credential: string) => void }) {
@@ -84,10 +85,10 @@ export function GoogleLoginButton({ onCredential }: { onCredential: (credential:
             return stopObserving;
         }
 
-        let script = document.querySelector<HTMLScriptElement>(`script[src="${GSI_SRC}"]`);
+        let script = document.querySelector<HTMLScriptElement>(`script[src="${GIS_SRC}"]`);
         if (!script) {
             script = document.createElement("script");
-            script.src = GSI_SRC;
+            script.src = GIS_SRC;
             script.async = true;
             document.head.appendChild(script);
         }

@@ -8,13 +8,14 @@ import type { LoginResponse } from "@/lib/types";
 import { GoogleLoginButton, HelpGuideModal, RoutesModal } from "@/components/";
 import { BadgeIcon, HelpIcon } from "@/components/icons";
 
+
+// Bus illustration for desktop and mobile.
 const tile = "relative aspect-square overflow-hidden rounded-md";
 
-// 右側的幾何積木校車插圖（純裝飾）
 function BusIllustration() {
     return (
         <div aria-hidden="true" className="grid w-full max-w-[560px] grid-cols-4 gap-2.5">
-            {/* 第一排 */}
+            {/* First Row */}
             <div className={`${tile} bg-surface2`}>
                 <span className="absolute top-[18%] left-[18%] size-[64%] rounded-full bg-accent" />
             </div>
@@ -28,7 +29,7 @@ function BusIllustration() {
                 <span className="absolute top-[20%] left-[20%] size-[60%] rounded-full border-[9px] border-line" />
             </div>
 
-            {/* 第二排：車身 */}
+            {/* Second Row */}
             <div className={`${tile} bg-line`}>
                 <span className="absolute top-[18%] left-[20%] h-[46%] w-[60%] rounded-[10px] bg-surface" />
             </div>
@@ -43,7 +44,7 @@ function BusIllustration() {
                 <span className="absolute right-[12%] bottom-[14%] size-[14%] rounded-[3px] bg-accent" />
             </div>
 
-            {/* 第三排：車輪與路面 */}
+            {/* Third Row: Wheels and Road */}
             <div className={`${tile} bg-surface2`}>
                 <span className="absolute -top-1/4 left-1/4 size-1/2 rounded-full bg-fg" />
                 <span className="absolute -top-[8%] left-[42%] size-[16%] rounded-full bg-surface2" />
@@ -66,11 +67,10 @@ const mTile = "relative overflow-hidden rounded-[6px] bg-surface";
 const mBody = "relative aspect-square overflow-hidden rounded-[6px] bg-line";
 const mWheel = `${mTile} aspect-[2/1]`;
 
-// 手機版的幾何積木校車插圖（純裝飾，白色方塊配淺灰底）
 function BusIllustrationMobile() {
     return (
         <div aria-hidden="true" className="grid w-full grid-cols-4 gap-2">
-            {/* 第一排 */}
+            {/* First Row */}
             <div className={`${mTile} aspect-square`}>
                 <span className="absolute top-[18%] left-[18%] size-[64%] rounded-full bg-accent" />
             </div>
@@ -84,7 +84,7 @@ function BusIllustrationMobile() {
                 <span className="absolute top-[20%] left-[20%] size-[60%] rounded-full border-[7px] border-line" />
             </div>
 
-            {/* 第二排：車身 */}
+            {/* Second Row: Bus Body */}
             <div className={mBody}>
                 <span className="absolute top-[18%] left-[20%] h-[46%] w-[60%] rounded-lg bg-surface" />
             </div>
@@ -99,7 +99,7 @@ function BusIllustrationMobile() {
                 <span className="absolute right-[12%] bottom-[14%] size-[14%] rounded-[2px] bg-accent" />
             </div>
 
-            {/* 第三排：車輪與路面 */}
+            {/* Third Row: Wheels and Road */}
             <div className={mWheel}>
                 <span className="absolute -top-1/2 left-1/4 h-full w-1/2 rounded-full bg-fg" />
             </div>
@@ -169,6 +169,7 @@ export default function LoginPage() {
         <div className="flex min-h-dvh flex-col bg-[#f3f4f6] md:bg-bg">
             {/* Header */}
             <header className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 pt-5 md:px-14 md:py-7">
+                {/* Logo */}
                 <div className="flex items-center gap-2.5 md:gap-3">
                     <BadgeIcon size={40} className="max-md:size-[34px]!" />
                     <span className="flex flex-col gap-0.5">
@@ -176,14 +177,15 @@ export default function LoginPage() {
                         <span className="text-[13px] text-muted">國立鳳山高級中學</span>
                     </span>
                 </div>
-                {/* 手機版的路線／說明按鈕移到下方登入面板 */}
-                <nav aria-label="不需登入" className="-mx-2 hidden gap-1 md:mx-0 md:flex md:gap-2">
+
+                {/* Desktop Nav */}
+                <nav aria-label="不需登入" className="hidden md:flex md:gap-2">
                     <RoutesModal />
                     <HelpGuideModal />
                 </nav>
             </header>
 
-            {/* Mobile: decorative bus（佔滿登入面板上方的剩餘空間） */}
+            {/* Mobile: decorative bus */}
             <div className="flex flex-1 items-center justify-center px-6 pt-5 pb-10 md:hidden">
                 <BusIllustrationMobile />
             </div>
@@ -191,12 +193,15 @@ export default function LoginPage() {
             <main className="mx-auto flex w-full max-w-[1280px] flex-col gap-10 rounded-t-[28px] bg-surface px-6 pt-8 pb-8 shadow-[0_-12px_32px_-24px_rgba(28,28,30,0.25)] max-md:relative max-md:-mt-5 md:flex-1 md:rounded-none md:bg-transparent md:px-14 md:pt-10 md:pb-14 md:shadow-none lg:flex-row lg:items-center lg:gap-18 lg:pt-6">
                 {/* Left: login */}
                 <section className="flex w-full min-w-0 flex-col gap-[22px] md:max-w-[520px] md:gap-9 lg:flex-1">
+                    {/* Title & Description */}
                     <div className="flex flex-col gap-2.5 md:gap-5">
+                        
                         <h1 className="font-display text-[30px] leading-[1.25] font-bold tracking-[-0.01em] md:text-[clamp(36px,4.2vw,60px)] md:leading-[1.18]">
                             搭校車，
                             <br className="hidden md:block" />
                             先登記座位。
                         </h1>
+
                         <p className="max-w-[26em] text-[15px] leading-[1.7] text-muted md:text-lg md:leading-[1.75]">
                             登入，選路線、挑座位。
                         </p>
@@ -216,7 +221,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    {/* Mobile: 不需登入即可查看 */}
+                    {/* Mobile Nav */}
                     <nav aria-label="登入前可查看" className="grid grid-cols-2 gap-2.5 md:hidden">
                         <RoutesModal variant="pill" />
                         <HelpGuideModal variant="pill" />
@@ -265,7 +270,7 @@ export default function LoginPage() {
                     )}
                 </section>
 
-                {/* Right: geometric bus */}
+                {/* Right: geometric bus(only Desktop) */}
                 <section className="hidden min-w-0 flex-1 justify-end lg:flex">
                     <BusIllustration />
                 </section>

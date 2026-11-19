@@ -13,21 +13,27 @@
         "data": true,
         "public": true,
 
-        "Dockerfile": true,
+        "server": true,
+        "scripts": true,
+
+        "Dockerfile": false,
         
         "next-env.d.ts": true,
         "tsconfig.json": true,
         "tsconfig.tsbuildinfo": true,
         "eslint.config.mjs": true,
         "postcss.config.mjs": true,
+        "next.config.ts": true,
+
+        "README.md": true,
 
         "schema.prisma": true,
         "prisma.config.ts": true,
         
-        "nginx.conf": true,
         
         ".gitignore": true,
 
-        ".env.example": true,
+        ".env*": true,
+
     }
 }
