@@ -223,6 +223,11 @@ export default function LoginPage() {
                     <BusIllustration />
                 </section>
             </main>
+
+            {/* Footer */}
+            <footer className="bg-surface px-6 pb-6 text-center text-[13px] text-muted md:bg-transparent md:pb-8">
+                © 2026 鳳山高中 校車登記系統 | Developed by Okowa
+            </footer>
         </div>
     );
 }
