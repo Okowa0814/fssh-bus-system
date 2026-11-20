@@ -49,7 +49,7 @@ function StateCard({ icon, title, children }: { icon: ReactNode; title: string; 
             />
             <span className="relative">{icon}</span>
             <h1 className="relative font-display text-[26px] leading-tight font-bold md:text-[32px]">{title}</h1>
-            <div className="relative flex w-full flex-col items-start gap-4 text-[15px] leading-[1.7] text-muted md:text-base">
+            <div className="relative flex w-full flex-col items-stretch gap-4 text-[15px] leading-[1.7] text-muted *:flex-none md:items-start md:text-base">
                 {children}
             </div>
         </div>
@@ -80,7 +80,8 @@ export default function BookingPage() {
         - step: 當前步驟索引
         - route: 選擇的路線
         - selectedStation: 選擇的上車站點
-        - pendingSeat: 點選後等待確認的座位
+        - pendingSeat: 目前選取的座位
+        - seatConfirmOpen: 是否顯示座位確認視窗
         - takenSeats: 已被佔用的座位號碼列表
         - seatsLoading: 是否正在載入座位資訊
         - submitting: 是否正在提交登記
@@ -97,6 +98,7 @@ export default function BookingPage() {
     const [route, setRoute] = useState<RouteDto | null>(null);
     const [selectedStation, setSelectedStation] = useState<string | null>(null);
     const [pendingSeat, setPendingSeat] = useState<number | null>(null);
+    const [seatConfirmOpen, setSeatConfirmOpen] = useState(false);
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
     const [seatsLoading, setSeatsLoading] = useState(false);
     const [seatsError, setSeatsError] = useState(false);
@@ -238,6 +240,7 @@ export default function BookingPage() {
         } finally {
             setSubmitting(false);
             setPendingSeat(null);
+            setSeatConfirmOpen(false);
             setStep(3);
         }
     };
@@ -583,7 +586,7 @@ export default function BookingPage() {
                             挑一個位子
                         </h1>
                         <p className="text-sm text-muted md:text-base">
-                            {route.name}，{selectedStation}上車。點一個空位，跳出確認後就完成登記。
+                            {route.name}，{selectedStation}上車。選好空位後按「確定」，再確認一次就完成登記。
                         </p>
                     </div>
 
@@ -615,6 +618,21 @@ export default function BookingPage() {
                         <button type="button" onClick={() => gotoStep(1)} className={secondaryButton}>
                             上一步
                         </button>
+                        {pendingSeat !== null && (
+                            <span className="flex flex-1 flex-wrap items-center gap-5 md:flex-none">
+                                <span className="hidden text-base text-fg2 md:block">
+                                    已選座位 <span className="font-bold text-fg">{pendingSeat} 號</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={submitting}
+                                    onClick={() => setSeatConfirmOpen(true)}
+                                    className={primaryButton}
+                                >
+                                    確定
+                                </button>
+                            </span>
+                        )}
                     </ActionBar>
                 </>
             )}
@@ -645,37 +663,7 @@ export default function BookingPage() {
                                 </p>
                             </div>
 
-                            <div className="relative flex flex-wrap items-center gap-6 rounded-card bg-surface2 p-5 md:gap-8 md:p-7">
-                                <dl className="grid min-w-0 flex-[1_1_280px] grid-cols-2 gap-x-6 gap-y-5">
-                                    <div className="flex flex-col gap-1">
-                                        <dt className="text-sm text-muted">路線</dt>
-                                        <dd className="text-xl font-bold">{result.booking.route.name}</dd>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <dt className="text-sm text-muted">上車站</dt>
-                                        <dd className="text-xl font-medium">{result.booking.station}</dd>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <dt className="text-sm text-muted">到站時間</dt>
-                                        <dd className="text-2xl font-semibold">{result.booking.arriveAt || "—"}</dd>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <dt className="text-sm text-muted">月費</dt>
-                                        <dd className="text-xl font-medium">
-                                            {formatPrice(result.booking.monthlyPrice)}
-                                        </dd>
-                                    </div>
-                                </dl>
-                                <div className="flex flex-none flex-col items-center gap-2.5">
-                                    <span className="text-sm text-muted">座位</span>
-                                    <span className="grid size-24 place-items-center rounded-full bg-accent text-[44px] font-semibold text-ink md:size-28 md:text-[50px]">
-                                        {result.booking.seatNumber}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="relative flex flex-wrap items-center justify-between gap-4">
-                                <span className="text-sm text-muted">開放時間內，可以在首頁取消登記。</span>
+                            <div className="relative flex">
                                 <Link href="/" className={`${primaryButton} max-md:w-full max-md:flex-none`}>
                                     回首頁看車票
                                 </Link>
@@ -723,9 +711,9 @@ export default function BookingPage() {
             )}
 
             {/* Seat confirmation modal */}
-            {step === 2 && route && selectedStation && pendingSeat !== null && (
+            {step === 2 && route && selectedStation && pendingSeat !== null && seatConfirmOpen && (
                 <div
-                    onClick={() => !submitting && setPendingSeat(null)}
+                    onClick={() => !submitting && setSeatConfirmOpen(false)}
                     className="fixed inset-0 z-50 flex items-end justify-center bg-fg/30 md:items-center md:p-6"
                 >
                     <div
@@ -762,7 +750,7 @@ export default function BookingPage() {
                             <button
                                 type="button"
                                 disabled={submitting}
-                                onClick={() => setPendingSeat(null)}
+                                onClick={() => setSeatConfirmOpen(false)}
                                 className="h-13.5 rounded-full border-[1.5px] border-line bg-surface font-medium disabled:opacity-50"
                             >
                                 再想想

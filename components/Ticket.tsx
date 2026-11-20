@@ -10,32 +10,11 @@ function formatBookedAt(iso: string): string {
     return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// QR code 佔位圖：之後接上真正的車票 QR 時，替換這個元件即可
+// QR code 尚未實作：之後接上真正的車票 QR 時，替換這個元件即可
 function QrPlaceholder() {
-    const finder = "absolute size-[30%] rounded-[14%] border-[6px] border-fg bg-surface";
-
     return (
-        <div
-            role="img"
-            aria-label="QR code 佔位圖"
-            className="relative size-40 shrink-0 overflow-hidden rounded-2xl border border-line bg-surface p-3"
-        >
-            <div className="relative size-full">
-                {/* 假的資料點 */}
-                <div className="absolute inset-0 bg-[repeating-conic-gradient(var(--fg)_0%_25%,transparent_0%_50%)] bg-[length:14px_14px] opacity-25" />
-
-                {/* 三個定位點 */}
-                {["left-0 top-0", "right-0 top-0", "left-0 bottom-0"].map((position) => (
-                    <span key={position} className={`${finder} ${position}`}>
-                        <span className="absolute inset-[18%] rounded-[10%] bg-fg" />
-                    </span>
-                ))}
-
-                {/* 中央標示 */}
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fg px-3 py-1 text-xs font-medium whitespace-nowrap text-ink">
-                    QR 佔位
-                </span>
-            </div>
+        <div className="grid size-40 shrink-0 place-items-center rounded-2xl border-[1.5px] border-dashed border-line-strong font-mono text-sm font-medium text-muted">
+            QR code WIP
         </div>
     );
 }
@@ -142,7 +121,7 @@ export function Ticket({ booking }: { booking: BookingDto }) {
                             {booking.route.name}・{booking.seatNumber} 號
                         </span>
                         <span className="max-w-[24em] text-sm leading-relaxed text-muted">
-                            QR code 功能準備中，這裡先放佔位圖。
+                            QR code 功能準備中。
                         </span>
                         <span className="text-[13px] text-muted">點一下翻回正面</span>
                     </div>

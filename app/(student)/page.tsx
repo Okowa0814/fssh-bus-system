@@ -294,14 +294,17 @@ export default function HomePage() {
                             <Ticket booking={booked} />
 
                             {/* Cancel booking */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 md:rounded-[18px] md:bg-surface2 md:px-5 md:py-4">
-                                <span className="text-[13px] text-muted md:text-[15px] md:text-fg2">
-                                    想換位子？開放時間內可以先取消，再重新登記。
-                                </span>
+                            <div className="flex flex-col gap-4 rounded-[18px] bg-surface2 p-5 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-3 md:py-4">
+                                <p className="flex flex-col gap-1 md:block md:text-[15px] md:text-fg2">
+                                    <span className="font-bold md:font-normal">想換位子？</span>
+                                    <span className="text-sm leading-relaxed text-muted md:text-[15px] md:text-fg2">
+                                        開放時間內可以先取消，再重新登記。
+                                    </span>
+                                </p>
                                 <button
                                     type="button"
                                     onClick={() => setCancelOpen(true)}
-                                    className="min-h-11 rounded-full border-[1.5px] border-accent bg-surface px-5 text-[15px] font-medium text-accent transition hover:bg-accent-wash"
+                                    className="h-12 w-full rounded-full border-[1.5px] border-accent bg-surface px-5 text-[15px] font-medium text-accent transition hover:bg-accent-wash md:h-auto md:min-h-11 md:w-auto"
                                 >
                                     取消登記
                                 </button>
@@ -473,9 +476,15 @@ export default function HomePage() {
                                 要放掉這個位子嗎？
                             </h2>
                             <p className="text-[15px] leading-[1.7] text-fg2">
-                                取消後座位會馬上開放給其他同學，開放時間內你還是可以重新登記。
+                                取消後座位會馬上釋出，開放時間內你還是可以重新登記。
                             </p>
                         </div>
+
+                        {/* Waitlist warning */}
+                        <p className="relative rounded-2xl bg-warning-wash px-4 py-3 text-sm leading-[1.7] text-warning-ink">
+                            <span className="font-bold">注意：</span>
+                            如果這條路線有人在候補，位子會直接補給候補的同學。之後想再登記可能已經沒有空位，只能重新排候補。
+                        </p>
 
                         <div className="relative flex flex-col gap-2.5">
                             {/* Keep button */}
