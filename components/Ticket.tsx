@@ -4,12 +4,6 @@ import { useState } from "react";
 import { BadgeIcon } from "@/components/icons";
 import type { BookingDto } from "@/lib/types";
 
-function formatBookedAt(iso: string): string {
-    const d = new Date(iso);
-    const pad = (value: number) => String(value).padStart(2, "0");
-    return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 // QR code 尚未實作：之後接上真正的車票 QR 時，替換這個元件即可
 function QrPlaceholder() {
     return (
@@ -51,7 +45,6 @@ export function Ticket({ booking }: { booking: BookingDto }) {
                                 <BadgeIcon size={26} />
                                 鳳山高中專車
                             </span>
-                            <span className="text-sm text-muted">本學期電子車票</span>
                         </div>
 
                         <div className="flex flex-col gap-1 md:gap-1.5">
@@ -97,7 +90,6 @@ export function Ticket({ booking }: { booking: BookingDto }) {
                         </span>
                         <span className="flex flex-col gap-1 md:items-center md:text-center">
                             <span className="text-[17px] font-medium md:hidden">座位 {booking.seatNumber} 號</span>
-                            <span className="text-[13px] text-muted">{formatBookedAt(booking.createdAt)} 登記</span>
                             <span className="text-[13px] text-muted">點一下顯示 QR code</span>
                         </span>
                     </div>

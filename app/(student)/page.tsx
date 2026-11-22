@@ -66,9 +66,6 @@ function ProfileCard({ rows }: { rows: InfoRow[] }) {
                     </div>
                 ))}
             </dl>
-            <p className="text-[13px] leading-relaxed text-muted">
-                資料由學校 Google 帳號同步，有誤請洽圖書館。
-            </p>
         </section>
     );
 }
