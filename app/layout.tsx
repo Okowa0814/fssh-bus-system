@@ -39,7 +39,6 @@ export const metadata: Metadata = {
         siteName: siteName,
         title: siteName,
         description: description,
-        images: [{ url: "/fssh-badge.png", width: 423, height: 408, alt: "鳳山高中校徽" }],
     }
 };
 
