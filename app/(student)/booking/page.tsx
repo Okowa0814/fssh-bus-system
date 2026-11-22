@@ -69,6 +69,8 @@ const primaryButton =
     "flex h-13.5 flex-1 items-center justify-center rounded-full bg-fg px-8 font-medium whitespace-nowrap text-ink transition disabled:bg-faint md:h-14 md:flex-none";
 const secondaryButton =
     "flex h-13.5 flex-1 items-center justify-center rounded-full border-[1.5px] border-line bg-surface px-5 font-medium transition hover:border-fg md:h-12 md:flex-none md:text-[15px]";
+const dangerButton =
+    "flex h-13.5 flex-1 items-center justify-center rounded-full border-[1.5px] border-accent bg-surface px-5 font-medium text-accent transition hover:bg-accent-wash disabled:opacity-50 md:h-12 md:flex-none md:text-[15px]";
 
 export default function BookingPage() {
     /*
@@ -86,6 +88,9 @@ export default function BookingPage() {
         - seatsLoading: 是否正在載入座位資訊
         - submitting: 是否正在提交登記
         - result: 登記結果
+
+        - cancelOpen: 是否顯示取消登記確認視窗
+        - cancelling: 是否正在取消登記
     */
     const [loading, setLoading] = useState(true);
 
@@ -105,6 +110,9 @@ export default function BookingPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [result, setResult] = useState<BookingResult | null>(null);
+
+    const [cancelOpen, setCancelOpen] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     // Load initial data on component mount
     useEffect(() => {
@@ -261,6 +269,27 @@ export default function BookingPage() {
         }
     };
 
+    // Cancel the existing booking — on success the page falls through to the booking steps
+    const cancelBooking = async () => {
+        if (!existing) {
+            return;
+        }
+        setCancelling(true);
+        try {
+            await api(`/api/student/bookings/${existing.id}`, { method: "DELETE" });
+            setCancelOpen(false);
+            setExisting(null);
+            // 釋出座位後路線的 isFull 可能改變，重新抓一次
+            api<RouteDto[]>("/api/public/routes")
+                .then(setRoutes)
+                .catch(() => {});
+        } catch (error) {
+            alert(error instanceof ApiError ? error.message : "取消失敗，請稍後再試");
+        } finally {
+            setCancelling(false);
+        }
+    };
+
     // Retry booking by resetting the result and step, and reloading seats if a route is selected
     const retry = () => {
         setResult(null);
@@ -330,25 +359,96 @@ export default function BookingPage() {
     // Already booked
     if (existing) {
         return (
-            <StateCard
-                icon={
-                    <span className="grid size-16 place-items-center rounded-full bg-accent text-[28px] font-semibold text-ink">
-                        {existing.seatNumber}
-                    </span>
-                }
-                title="你已完成登記"
-            >
-                <p>
-                    <span className="font-semibold text-fg">
-                        {existing.route.name}，{existing.station}上車，座位 {existing.seatNumber} 號。
-                    </span>
-                    <br />
-                    如需改選，請先在首頁取消原登記。
-                </p>
-                <Link href="/" className={primaryButton}>
-                    回首頁看車票
-                </Link>
-            </StateCard>
+            <>
+                <StateCard
+                    icon={
+                        <span className="grid size-16 place-items-center rounded-full bg-accent text-[28px] font-semibold text-ink">
+                            {existing.seatNumber}
+                        </span>
+                    }
+                    title="你已完成登記"
+                >
+                    <p>
+                        <span className="font-semibold text-fg">
+                            {existing.route.name}，{existing.station}上車，座位 {existing.seatNumber} 號。
+                        </span>
+                        <br />
+                        如需改選，可以先取消再重新登記。
+                    </p>
+                    {/* 兩顆按鈕同寬：手機撐滿，桌機跟著較寬的那顆 */}
+                    <div className="flex flex-col gap-3 *:flex-none md:w-max">
+                        <Link href="/" className={primaryButton}>
+                            回首頁看車票
+                        </Link>
+                        <button type="button" onClick={() => setCancelOpen(true)} className={dangerButton}>
+                            取消登記
+                        </button>
+                    </div>
+                </StateCard>
+
+                {/* Cancel confirmation modal */}
+                {cancelOpen && (
+                    <div
+                        onClick={() => !cancelling && setCancelOpen(false)}
+                        className="fixed inset-0 z-50 flex items-end justify-center bg-fg/30 md:items-center md:p-6"
+                    >
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="cancel-title"
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative flex w-full flex-col gap-5 overflow-hidden rounded-t-[28px] bg-surface px-6 pt-7 pb-8 shadow-card-lg max-md:animate-[sheet-up_240ms_ease-out] md:max-w-[420px] md:animate-[pop-in_180ms_ease-out] md:rounded-[28px] md:px-7 md:pt-8 md:pb-6"
+                        >
+                            <span
+                                aria-hidden="true"
+                                className="absolute -bottom-px -left-px size-24 rounded-tr-full bg-surface2"
+                            />
+
+                            <span className="relative grid size-18 place-items-center rounded-full bg-accent text-[32px] font-semibold text-ink">
+                                {existing.seatNumber}
+                            </span>
+
+                            {/* Confirmation message */}
+                            <div className="relative flex flex-col gap-2">
+                                <h2 id="cancel-title" className="text-[22px] font-bold">
+                                    要放掉這個位子嗎？
+                                </h2>
+                                <p className="text-[15px] leading-[1.7] text-fg2">
+                                    取消後座位會馬上釋出，開放時間內你還是可以重新登記。
+                                </p>
+                            </div>
+
+                            {/* Waitlist warning */}
+                            <p className="relative rounded-2xl bg-warning-wash px-4 py-3 text-sm leading-[1.7] text-warning-ink">
+                                <span className="font-bold">注意：</span>
+                                如果這條路線有人在候補，位子會直接補給候補的同學。之後想再登記可能已經沒有空位，只能重新排候補。
+                            </p>
+
+                            <div className="relative flex flex-col gap-2.5">
+                                {/* Keep button */}
+                                <button
+                                    type="button"
+                                    disabled={cancelling}
+                                    onClick={() => setCancelOpen(false)}
+                                    className="h-13.5 rounded-full bg-fg font-medium text-ink disabled:opacity-50"
+                                >
+                                    先留著
+                                </button>
+
+                                {/* Cancel button */}
+                                <button
+                                    type="button"
+                                    disabled={cancelling}
+                                    onClick={() => void cancelBooking()}
+                                    className="h-13.5 rounded-full border-[1.5px] border-accent bg-surface font-medium text-accent transition hover:bg-accent-wash disabled:opacity-50"
+                                >
+                                    {cancelling ? "取消中…" : "確定取消登記"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </>
         );
     }
 
