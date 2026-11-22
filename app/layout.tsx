@@ -18,18 +18,29 @@ const outfit = Outfit({
     display: "swap",
 });
 
+const siteName = "鳳山高中專車登記系統";
+const description = "鳳山高中放學專車線上登記系統，選路線、選座位，提供快速的線上登記服務。";
+
 // Next.js will automatically generate metadata for each page
 export const metadata: Metadata = {
-    title: "鳳山高中專車登記系統",
-    description:
-        "鳳山高中放學專車線上登記系統：使用學校 Google 帳號登入，於開放時間內選擇路線、上車站點與座位，登記成功即產生電子車票；路線額滿可加入候補並自動遞補，亦可隨時查看路線、停靠站與發車時間。",
+    metadataBase: new URL("https://bus.fssh.khc.edu.tw"),
+    title: siteName,
+    description: description,
+    applicationName: siteName,
     keywords: [
         "鳳山高中",
         "專車",
-        "放學專車",
         "線上登記",
         "座位登記",
     ],
+    openGraph: {
+        type: "website",
+        locale: "zh_TW",
+        siteName: siteName,
+        title: siteName,
+        description: description,
+        images: [{ url: "/fssh-badge.png", width: 423, height: 408, alt: "鳳山高中校徽" }],
+    }
 };
 
 export default function RootLayout({
